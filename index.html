@@ -18,9 +18,43 @@
     .page.active { display: block; }
 
     .card { background: white; border-radius: 12px; padding: 15px; border: none; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 15px; }
-    .f-group { display: flex; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
-    .f-group label { width: 35%; font-size: 12px; font-weight: bold; color: #444; }
-    .f-group input { width: 55%; border: none; outline: none; background: transparent; font-size: 14px; }
+    .f-group { 
+  display: flex; 
+  align-items: center; 
+  margin-bottom: 0; 
+  border-bottom: 1px solid #eee; 
+  padding: 10px 0; /* Padding seragam untuk semua baris */
+}
+
+.f-group label { 
+  width: 40%; /* Lebar label diperluas agar seragam */
+  font-size: 12px; 
+  font-weight: bold; 
+  color: #444; 
+  margin-bottom: 0;
+}
+
+/* Menyamakan input, select, dan grup input agar sejajar */
+.f-group input, 
+.f-group select,
+.f-group .input-wrapper { 
+  width: 60%; 
+  border: none; 
+  outline: none; 
+  background: transparent; 
+  font-size: 14px; 
+  color: #333;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+
+/* Style khusus untuk dropdown agar tidak ada border default browser */
+.f-group select {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
     
     .table-responsive { max-height: 60vh; overflow-y: auto; border-radius: 8px; font-size: 10px; border: 1px solid #eee; }
     table thead { position: sticky; top: 0; z-index: 10; }
@@ -73,34 +107,73 @@
       <div id="reader" style="display:none;"></div>
       <div class="card">
         <form id="soForm">
-          <div class="f-group"><label>TGL SO</label><input type="date" id="tgl"></div>
-<div class="f-group">
-  <label>KETERANGAN SO</label>
-  <select id="kategori" class="form-select border-0 p-0 shadow-none" style="font-size: 14px;">
-    <option value="SO ROKOK">SO ROKOK</option>
-    <option value="SO SUSU PREMIUM">SO SUSU PREMIUM</option>
-    <option value="SO ITEM PRIMER">SO ITEM PRIMER</option>
-    <option value="SO PARTIAL">SO PARTIAL</option>
-
-  </select>
-</div>
-          <div class="f-group"><label>NIK</label><input type="text" id="nik" placeholder="INPUT NIK"></div>
-          <div class="f-group"><label>NAMA</label><input type="text" id="nama" readonly placeholder="-"></div>
-          <div class="f-group"><label>BARCODE</label><input type="text" id="barcode" placeholder="SCAN/INPUT"><button type="button" onclick="startScan()" style="border:none;background:none;font-size:18px;">📷</button></div>
-          <div class="f-group">
-  <label>PLU</label>
-  <div class="d-flex w-100">
-    <input type="text" id="plu" placeholder="INPUT PLU" class="flex-grow-1">
-    <button type="button" onclick="bukaLov()" class="btn btn-sm btn-outline-primary border-0">🔍</button>
+  <div class="f-group">
+    <label>TGL SO</label>
+    <input type="date" id="tgl">
   </div>
-</div>
-          <div class="f-group"><label>DESCP</label><input type="text" id="descp" readonly placeholder="-"></div>
-          <div class="f-group"><label>LOKASI</label><input type="text" id="lokasi" readonly placeholder="-"></div>
-          <div class="f-group"><label>C2</label><input type="text" id="c2" readonly placeholder="-"></div>
-          <div class="f-group"><label>TAG</label><input type="text" id="tag" readonly placeholder="-"></div>
-          <div class="f-group" style="display:none;"><label>OH</label><input type="text" id="oh" readonly placeholder="0"></div>
-          <div class="f-group"><label>QTY PCS</label><input type="number" id="qty" placeholder="0"></div>
-        </form>
+
+  <div class="f-group">
+    <label>KETERANGAN SO</label>
+    <select id="kategori">
+      <option value="SO ROKOK">SO ROKOK</option>
+      <option value="SO SUSU PREMIUM">SO SUSU PREMIUM</option>
+      <option value="SO ITEM PRIMER">SO ITEM PRIMER</option>
+      <option value="SO PARTIAL">SO PARTIAL</option>
+    </select>
+  </div>
+
+  <div class="f-group">
+    <label>NIK</label>
+    <input type="text" id="nik" placeholder="INPUT NIK">
+  </div>
+
+  <div class="f-group">
+    <label>NAMA</label>
+    <input type="text" id="nama" readonly placeholder="-">
+  </div>
+
+  <div class="f-group">
+    <label>BARCODE</label>
+    <div class="input-wrapper">
+      <input type="text" id="barcode" placeholder="SCAN/INPUT" style="width: 100%;">
+      <button type="button" onclick="startScan()" style="border:none; background:none; padding:0 5px;">📷</button>
+    </div>
+  </div>
+
+  <div class="f-group">
+    <label>PLU</label>
+    <div class="input-wrapper">
+      <input type="text" id="plu" placeholder="INPUT PLU" style="width: 100%;">
+      <button type="button" onclick="bukaLov()" style="border:none; background:none; padding:0 5px;">🔍</button>
+    </div>
+  </div>
+
+  <div class="f-group">
+    <label>DESCP</label>
+    <input type="text" id="descp" readonly placeholder="-">
+  </div>
+
+  <div class="f-group">
+    <label>LOKASI</label>
+    <input type="text" id="lokasi" readonly placeholder="-">
+  </div>
+
+  <div class="f-group">
+    <label>C2</label>
+    <input type="text" id="c2" readonly placeholder="-">
+  </div>
+
+  <div class="f-group">
+    <label>TAG</label>
+    <input type="text" id="tag" readonly placeholder="-">
+  </div>
+
+  <div class="f-group">
+    <label>QTY PCS</label>
+    <input type="number" id="qty" placeholder="0">
+  </div>
+</form>
+
       </div>
       <div class="btn-grid">
         <button onclick="simpanKeAntrean()" class="btn-act" style="background:#007bff;">SIMPAN</button>
