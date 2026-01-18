@@ -67,39 +67,46 @@
       </div>
     </div>
 
-    <div id="page-monitoring" class="page">
-      <div class="card">
-        <label class="fw-bold mb-1" style="font-size:11px;">FILTER TANGGAL SO:</label>
-        <div class="d-flex gap-2">
-          <input type="date" id="filterTgl" class="form-control form-control-sm">
-          <button onclick="muatMonitoring()" class="btn btn-primary btn-sm px-3">CARI</button>
-        </div>
-      </div>
-      <div class="table-responsive">
-        <table class="table table-sm table-striped">
-          <thead class="table-dark">
-            <tr>
-              <th>PLU</th>
-              <th>DESCP</th>
-              <th>LOK</th>
-              <th>OH</th>
-              <th>FISIK</th>
-              <th>SEL</th>
-              <th>USER</th>
-            </tr>
-          </thead>
-          <tbody id="bodyMonitoring">
-            <tr><td colspan="7" class="text-center">Klik Cari untuk muat data</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <button onclick="unduh()" class="btn btn-success btn-sm w-100 mt-3 fw-bold">📥 EXPORT EXCEL (.XLSX)</button>
+<div id="page-monitoring" class="page">
+  <div class="card p-2 mb-2">
+    <div class="d-flex gap-1">
+      <button onclick="pilihSubTab('harian')" id="btnTabHarian" class="btn btn-sm btn-success w-100 fw-bold">📅 HARIAN</button>
+      <button onclick="pilihSubTab('histori')" id="btnTabHistori" class="btn btn-sm btn-outline-success w-100 fw-bold">📜 HISTORY</button>
     </div>
-
   </div>
 
+  <div id="sub-harian">
+    <div class="card p-2 mb-2">
+      <div class="d-flex gap-2 align-items-center">
+        <label class="small fw-bold">TGL:</label>
+        <input type="date" id="filterTgl" class="form-control form-control-sm">
+        <button onclick="muatMonitoring()" class="btn btn-primary btn-sm px-3">CARI</button>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm table-striped border">
+        <thead class="table-dark">
+          <tr><th>PLU</th><th>DESCP</th><th>LOK</th><th>FISIK</th><th>SEL</th><th>USER</th></tr>
+        </thead>
+        <tbody id="bodyMonitoring"></tbody>
+      </table>
+    </div>
+    <button onclick="unduh()" class="btn btn-warning btn-sm w-100 mt-2 fw-bold text-dark">📥 DOWNLOAD REPORT (.CSV)</button>
+  </div>
+
+  <div id="sub-histori" style="display:none;">
+    <div class="table-responsive" style="max-height: 75vh;">
+      <table class="table table-sm table-bordered" style="font-size:10px;">
+        <thead id="headMatrix" class="table-dark text-center align-middle sticky-top"></thead>
+        <tbody id="bodyMatrix" class="bg-white"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzlXipbpOHku7I5sx35O9gRgDxcNg7HjVCSO9Nn0QKjC83lrxVD5YYfXqgzLPQ6mdQC/exec"; 
+
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxLDEkk9ck0b_YWSEp-uQtJYWSpUdnn5u0urGSSbc717C6L3Z7-XgVNi7zTHvVe-l0p/exec"; 
 
 // Daftar NIK yang diizinkan mengakses menu Monitoring
 const AUTHORIZED_NIK = [
@@ -256,39 +263,6 @@ function updateTombolKirim() {
   btn.innerText = "🚀 KIRIM " + ANTREAN_DATA.length + " DATA KE SERVER";
 }
 
-// --- MONITORING ---
-function muatMonitoring() {
-  const tgl = document.getElementById('filterTgl').value;
-  document.getElementById('loader').style.display = 'flex';
-  
-  fetch(SCRIPT_URL, {
-    method: "POST",
-    body: JSON.stringify({ action: "getMonitoring", tanggal: tgl })
-  })
-  .then(res => res.json())
-  .then(data => {
-    let html = "";
-    data.forEach(r => {
-      const selisih = Number(r[11]);
-      const sColor = selisih < 0 ? "text-danger" : (selisih > 0 ? "text-success" : "");
-      html += `<tr>
-        <td>${r[4]}</td>
-        <td>${r[5]}</td>
-        <td>${r[6]}</td>
-        <td>${r[9]}</td>
-        <td class="fw-bold text-primary">${r[10]}</td>
-        <td class="fw-bold ${sColor}">${selisih}</td>
-        <td>${String(r[2]).split(' ')[0]}</td>
-      </tr>`;
-    });
-    document.getElementById('bodyMonitoring').innerHTML = html || "<tr><td colspan='7' class='text-center'>Data Kosong</td></tr>";
-    document.getElementById('loader').style.display = 'none';
-  })
-  .catch(() => {
-    document.getElementById('loader').style.display = 'none';
-  });
-}
-
 // --- FITUR SCAN ---
 function startScan() {
   const r = document.getElementById('reader');
@@ -307,8 +281,106 @@ function stopScan() {
   }
 }
 
+// --- LOGIKA MONITORING ---
+
+function pilihSubTab(tab) {
+  document.getElementById('sub-harian').style.display = tab === 'harian' ? 'block' : 'none';
+  document.getElementById('sub-histori').style.display = tab === 'histori' ? 'block' : 'none';
+  document.getElementById('btnTabHarian').className = tab === 'harian' ? 'btn btn-sm btn-success w-100 fw-bold' : 'btn btn-sm btn-outline-success w-100 fw-bold';
+  document.getElementById('btnTabHistori').className = tab === 'histori' ? 'btn btn-sm btn-success w-100 fw-bold' : 'btn btn-sm btn-outline-success w-100 fw-bold';
+  
+  if(tab === 'histori') muatHistoriMatrix();
+}
+
+// Modifikasi switchTab untuk poin 2 (Latest Date)
+function switchTab(tab) {
+  const inputNik = document.getElementById('nik').value.trim();
+  if (tab === 'monitoring') {
+    if (!AUTHORIZED_NIK.includes(inputNik)) {
+      alert("⚠️ AKSES DITOLAK!\nNIK Anda tidak memiliki izin.");
+      return;
+    }
+    // Poin 2: Ambil tanggal terbaru dari server
+    document.getElementById('loader').style.display = 'flex';
+    fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: "getLatestDate" }) })
+    .then(res => res.json())
+    .then(res => {
+      document.getElementById('filterTgl').value = res.latestDate;
+      muatMonitoring();
+    });
+  }
+
+  document.querySelectorAll('.tab-item, .page').forEach(el => el.classList.remove('active'));
+  if(tab === 'so') {
+    document.querySelector('.tab-item:nth-child(1)').classList.add('active');
+    document.getElementById('page-so').classList.add('active');
+  } else {
+    document.querySelector('.tab-item:nth-child(2)').classList.add('active');
+    document.getElementById('page-monitoring').classList.add('active');
+  }
+}
+
+function muatMonitoring() {
+  const tgl = document.getElementById('filterTgl').value;
+  document.getElementById('loader').style.display = 'flex';
+  fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: "getMonitoring", tanggal: tgl }) })
+  .then(res => res.json())
+  .then(data => {
+    let html = "";
+    data.forEach(r => {
+      const sel = Number(r[11]);
+      const sCol = sel < 0 ? "text-danger" : (sel > 0 ? "text-success" : "");
+      html += `<tr><td>${r[4]}</td><td>${r[5]}</td><td>${r[6]}</td><td class="fw-bold text-primary">${r[10]}</td><td class="fw-bold ${sCol}">${sel}</td><td>${String(r[2]).split(' ')[0]}</td></tr>`;
+    });
+    document.getElementById('bodyMonitoring').innerHTML = html || "<tr><td colspan='6' class='text-center'>Data Kosong</td></tr>";
+    document.getElementById('loader').style.display = 'none';
+  });
+}
+
+function muatHistoriMatrix() {
+  document.getElementById('loader').style.display = 'flex';
+  fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: "getHistoriMatrix" }) })
+  .then(res => res.json())
+  .then(res => {
+    // Buat Header (PLU, DESCP, LOK, C2 + Tanggal-tanggal ke samping)
+    let hHtml = `<tr><th>PLU</th><th>DESCP</th><th>LOK</th><th>C2</th>`;
+    res.headers.forEach(h => hHtml += `<th>${h}</th>`);
+    hHtml += `</tr>`;
+    document.getElementById('headMatrix').innerHTML = hHtml;
+
+    // Buat Body (Data Selisih)
+    let bHtml = "";
+    res.rows.forEach(r => {
+      bHtml += `<tr>
+        <td>${r.plu}</td>
+        <td style="min-width:120px">${r.descp}</td>
+        <td>${r.lok}</td>
+        <td>${r.c2}</td>`;
+      
+      res.headers.forEach(h => {
+        let val = r.vals[h] || "-";
+        // Warna Merah jika minus (kurang), Hijau jika plus (lebih)
+        let style = val < 0 ? "color:red;font-weight:bold" : (val > 0 ? "color:green;font-weight:bold" : "");
+        bHtml += `<td class="text-center" style="${style}">${val}</td>`;
+      });
+      bHtml += `</tr>`;
+    });
+    document.getElementById('bodyMatrix').innerHTML = bHtml;
+    document.getElementById('loader').style.display = 'none';
+  })
+  .catch(err => {
+    console.error("Error Matrix:", err);
+    document.getElementById('loader').style.display = 'none';
+  });
+}
+
+function unduh() {
+  const tgl = document.getElementById('filterTgl').value;
+  // Poin 4: Download sesuai tanggal yang dipilih
+  window.open(SCRIPT_URL + "?action=export&tgl=" + tgl, "_blank");
+}
+
 function refreshForm() { location.reload(); }
-function unduh() { window.open(SCRIPT_URL.replace("/exec", "/export?format=xlsx"), "_blank"); }
 
 </script>
 </body>
