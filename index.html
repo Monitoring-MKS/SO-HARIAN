@@ -34,7 +34,7 @@
 <body>
 
   <div id="loader"><b>MEMPROSES DATA...</b></div>
-  <div class="header">SYSTEM STOCK OPNAME</div>
+  <div class="header">SO HARIAN ITEM PANTAUAN</div>
 
   <div class="nav-tabs-custom">
     <div class="tab-item active" onclick="switchTab('so')">📝 INPUT SO</div>
@@ -106,16 +106,18 @@
 
 <script>
 
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxLDEkk9ck0b_YWSEp-uQtJYWSpUdnn5u0urGSSbc717C6L3Z7-XgVNi7zTHvVe-l0p/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyHa8CSes4fce_r6IvuwO4MM395BAM7ybR7WntgEvCuDvL4u5lf7ezpXvzD1PfDOT7b/exec"; 
 
-// Daftar NIK yang diizinkan mengakses menu Monitoring
-const AUTHORIZED_NIK = [
-  "06080176", "06040353", "01060319", "08081171", "10030732", "10062381", "03070494"
-];
+const AUTHORIZED_NIK = ["06080176", "06040353", "01060319", "08081171", "10030732", "10062381", "03070494"];
 
 let ANTREAN_DATA = JSON.parse(localStorage.getItem('so_antrean')) || [];
 let DATA_P = [], DATA_I = [];
 let html5QrCode;
+
+// --- GLOBAL CACHE UNTUK MONITORING ---
+let CACHE_MONITORING = null; // Menyimpan data report harian
+let CACHE_HISTORY = null;    // Menyimpan data matrix histori
+let DATA_IS_STALE = true;    // Penanda jika ada data baru masuk dan perlu refresh cache
 
 window.onload = function() {
   const t = new Date();
@@ -128,11 +130,17 @@ window.onload = function() {
 function switchTab(tab) {
   const inputNik = document.getElementById('nik').value.trim();
 
-  // Proteksi Menu Monitoring
   if (tab === 'monitoring') {
     if (!AUTHORIZED_NIK.includes(inputNik)) {
       alert("⚠️ AKSES DITOLAK!\nNIK Anda tidak memiliki izin untuk membuka laporan monitoring.");
       return;
+    }
+    
+    // Cek apakah perlu loading dari server atau gunakan cache
+    if (DATA_IS_STALE || !CACHE_MONITORING) {
+       muatSemuaDataMonitoring(); 
+    } else {
+       renderMonitoringHarian(); // Instant render dari cache
     }
   }
 
@@ -145,16 +153,13 @@ function switchTab(tab) {
   } else {
     document.querySelector('.tab-item:nth-child(2)').classList.add('active');
     document.getElementById('page-monitoring').classList.add('active');
-    muatMonitoring();
   }
 }
 
+// Ambil data master (Petugas & Barang)
 function loadDataFromServer() {
   document.getElementById('loader').style.display = 'flex';
-  fetch(SCRIPT_URL, {
-    method: "POST",
-    body: JSON.stringify({ action: "getData" })
-  })
+  fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: "getData" }) })
   .then(res => res.json())
   .then(res => {
     DATA_P = res.petugas;
@@ -168,7 +173,170 @@ function loadDataFromServer() {
   });
 }
 
-// --- LOGIKA PENCARIAN ---
+// --- LOGIKA DATA INPUT ---
+function simpanKeAntrean() {
+  const qty = document.getElementById('qty').value;
+  if (!document.getElementById('nama').value || !document.getElementById('plu').value || !qty) {
+    alert("⚠️ DATA TIDAK LENGKAP!"); return;
+  }
+  
+  const d = {
+    tgl: document.getElementById('tgl').value,
+    nik: document.getElementById('nik').value,
+    nama: document.getElementById('nama').value,
+    barcode: document.getElementById('barcode').value,
+    plu: document.getElementById('plu').value,
+    descp: document.getElementById('descp').value,
+    lokasi: document.getElementById('lokasi').value,
+    c2: document.getElementById('c2').value,
+    tag: document.getElementById('tag').value,
+    oh: document.getElementById('oh').value || 0,
+    qty: qty
+  };
+
+  ANTREAN_DATA.push(d);
+  localStorage.setItem('so_antrean', JSON.stringify(ANTREAN_DATA));
+  updateTombolKirim();
+  
+  ['barcode','plu','descp','lokasi','c2','tag','oh','qty'].forEach(id => document.getElementById(id).value = "");
+  document.getElementById('barcode').focus();
+}
+
+function kirimSemuaKeServer() {
+  const btn = document.getElementById('btnKirimServer');
+  btn.disabled = true;
+  btn.innerText = "⏳ MENGIRIM...";
+
+  fetch(SCRIPT_URL, {
+    method: "POST",
+    mode: "no-cors",
+    body: JSON.stringify({ action: "saveBulk", data: ANTREAN_DATA })
+  })
+  .then(() => {
+    alert("✅ BERHASIL DIKIRIM KE SERVER!");
+    ANTREAN_DATA = [];
+    localStorage.removeItem('so_antrean');
+    updateTombolKirim();
+    btn.disabled = false;
+    
+    // PENANDA PENTING: Set stale agar monitoring refresh data saat dibuka nanti
+    DATA_IS_STALE = true; 
+  })
+  .catch(err => {
+    alert("Gagal Kirim.");
+    btn.disabled = false;
+  });
+}
+
+// --- LOGIKA MONITORING (CACHE OPTIMIZED) ---
+
+function muatSemuaDataMonitoring() {
+  document.getElementById('loader').style.display = 'flex';
+  
+  // Ambil dua data sekaligus (Harian & Matrix) untuk efisiensi loading
+  Promise.all([
+    fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: "getMonitoring", tanggal: "ALL" }) }).then(r => r.json()),
+    fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: "getHistoriMatrix" }) }).then(r => r.json())
+  ])
+  .then(([dataHarian, dataMatrix]) => {
+    CACHE_MONITORING = dataHarian;
+    CACHE_HISTORY = dataMatrix;
+    DATA_IS_STALE = false; // Reset status stale
+    
+    renderMonitoringHarian();
+    if(document.getElementById('sub-histori').style.display === 'block') renderMatrix();
+    
+    document.getElementById('loader').style.display = 'none';
+  })
+  .catch(err => {
+    console.error(err);
+    document.getElementById('loader').style.display = 'none';
+  });
+}
+
+function renderMonitoringHarian() {
+  const tglFilter = document.getElementById('filterTgl').value; // Mengambil "yyyy-mm-dd"
+  if (!CACHE_MONITORING || !tglFilter) return;
+
+  // Karena di Apps Script sudah kita ubah ke string "yyyy-MM-dd", 
+  // pencocokan di browser sekarang jadi sangat mudah dan pasti akurat
+  const filtered = CACHE_MONITORING.filter(r => r[0] === tglFilter);
+
+  let html = "";
+  filtered.forEach(r => {
+    const sel = Number(r[11]);
+    const sCol = sel < 0 ? "text-danger" : (sel > 0 ? "text-success" : "");
+    html += `<tr>
+      <td>${r[4]}</td>
+      <td>${r[5]}</td>
+      <td>${r[6]}</td>
+      <td class="fw-bold text-primary">${r[10]}</td>
+      <td class="fw-bold ${sCol}">${sel}</td>
+      <td>${String(r[2]).split(' ')[0]}</td>
+    </tr>`;
+  });
+  
+  document.getElementById('bodyMonitoring').innerHTML = 
+    html || "<tr><td colspan='6' class='text-center'>Data Kosong di Tanggal: " + tglFilter + "</td></tr>";
+}
+
+// Fungsi tombol CARI di monitoring (sekarang instant)
+function muatMonitoring() {
+  renderMonitoringHarian();
+}
+
+function renderMatrix() {
+  if (!CACHE_HISTORY) return;
+  const res = CACHE_HISTORY;
+  
+  let hHtml = `<tr><th>PLU</th><th>DESCP</th><th>LOK</th><th>C2</th>`;
+  res.headers.forEach(h => hHtml += `<th>${h}</th>`);
+  hHtml += `</tr>`;
+  document.getElementById('headMatrix').innerHTML = hHtml;
+
+  let bHtml = "";
+  res.rows.forEach(r => {
+    bHtml += `<tr><td>${r.plu}</td><td style="min-width:120px">${r.descp}</td><td>${r.lok}</td><td>${r.c2}</td>`;
+    res.headers.forEach(h => {
+      let val = r.vals[h] || "-";
+      let style = val < 0 ? "color:red;font-weight:bold" : (val > 0 ? "color:green;font-weight:bold" : "");
+      bHtml += `<td class="text-center" style="${style}">${val}</td>`;
+    });
+    bHtml += `</tr>`;
+  });
+  document.getElementById('bodyMatrix').innerHTML = bHtml;
+}
+
+function pilihSubTab(tab) {
+  document.getElementById('sub-harian').style.display = tab === 'harian' ? 'block' : 'none';
+  document.getElementById('sub-histori').style.display = tab === 'histori' ? 'block' : 'none';
+  document.getElementById('btnTabHarian').className = tab === 'harian' ? 'btn btn-sm btn-success w-100 fw-bold' : 'btn btn-sm btn-outline-success w-100 fw-bold';
+  document.getElementById('btnTabHistori').className = tab === 'histori' ? 'btn btn-sm btn-success w-100 fw-bold' : 'btn btn-sm btn-outline-success w-100 fw-bold';
+  
+  if(tab === 'histori') renderMatrix();
+}
+
+// --- FUNGSI PENDUKUNG LAINNYA ---
+function unduh() {
+  const tgl = document.getElementById('filterTgl').value;
+  if (!tgl) {
+    alert("Silahkan pilih tanggal terlebih dahulu!");
+    return;
+  }
+  // Membuka tab baru untuk mendownload CSV langsung dari Apps Script
+  const downloadUrl = SCRIPT_URL + "?action=export&tgl=" + tgl;
+  window.open(downloadUrl, "_blank");
+}
+
+function updateTombolKirim() {
+  const btn = document.getElementById('btnKirimServer');
+  btn.style.display = ANTREAN_DATA.length > 0 ? "block" : "none";
+  btn.innerText = "🚀 KIRIM " + ANTREAN_DATA.length + " DATA KE SERVER";
+}
+
+function refreshForm() { location.reload(); }
+
+// Pencarian NIK & Barang tetap sama (Final)
 document.getElementById('nik').onblur = function() {
   const val = this.value.trim();
   if (!val) return;
@@ -194,7 +362,7 @@ function cariBarang(val, idx, tipe) {
     document.getElementById('lokasi').value = f[3];
     document.getElementById('c2').value = f[4];
     document.getElementById('tag').value = f[5];
-    document.getElementById('oh').value = f[6]; // Simpan OH ke input tersembunyi
+    document.getElementById('oh').value = f[6];
     setTimeout(() => document.getElementById('qty').focus(), 300);
   } else {
     alert(tipe + " TIDAK DITEMUKAN!");
@@ -204,66 +372,6 @@ function cariBarang(val, idx, tipe) {
 document.getElementById('barcode').onchange = function() { cariBarang(this.value, 0, "BARCODE"); };
 document.getElementById('plu').onchange = function() { cariBarang(this.value, 1, "PLU"); };
 
-// --- LOGIKA DATA ---
-function simpanKeAntrean() {
-  const qty = document.getElementById('qty').value;
-  if (!document.getElementById('nama').value || !document.getElementById('plu').value || !qty) {
-    alert("⚠️ DATA TIDAK LENGKAP!"); return;
-  }
-  
-  const d = {
-    tgl: document.getElementById('tgl').value,
-    nik: document.getElementById('nik').value,
-    nama: document.getElementById('nama').value,
-    barcode: document.getElementById('barcode').value,
-    plu: document.getElementById('plu').value,
-    descp: document.getElementById('descp').value,
-    lokasi: document.getElementById('lokasi').value,
-    c2: document.getElementById('c2').value,
-    tag: document.getElementById('tag').value,
-oh: document.getElementById('oh').value || 0, // OH tetap disimpan ke antrean
-    qty: qty
-  };
-
-  ANTREAN_DATA.push(d);
-  localStorage.setItem('so_antrean', JSON.stringify(ANTREAN_DATA));
-  updateTombolKirim();
-  
-  // Reset Form Barang (termasuk OH)
-  ['barcode','plu','descp','lokasi','c2','tag','oh','qty'].forEach(id => document.getElementById(id).value = "");
-  document.getElementById('barcode').focus();
-}
-
-function kirimSemuaKeServer() {
-  const btn = document.getElementById('btnKirimServer');
-  btn.disabled = true;
-  btn.innerText = "⏳ MENGIRIM...";
-
-  fetch(SCRIPT_URL, {
-    method: "POST",
-    mode: "no-cors",
-    body: JSON.stringify({ action: "saveBulk", data: ANTREAN_DATA })
-  })
-  .then(() => {
-    alert("✅ BERHASIL DIKIRIM KE SERVER!");
-    ANTREAN_DATA = [];
-    localStorage.removeItem('so_antrean');
-    updateTombolKirim();
-    btn.disabled = false;
-  })
-  .catch(err => {
-    alert("Gagal Kirim.");
-    btn.disabled = false;
-  });
-}
-
-function updateTombolKirim() {
-  const btn = document.getElementById('btnKirimServer');
-  btn.style.display = ANTREAN_DATA.length > 0 ? "block" : "none";
-  btn.innerText = "🚀 KIRIM " + ANTREAN_DATA.length + " DATA KE SERVER";
-}
-
-// --- FITUR SCAN ---
 function startScan() {
   const r = document.getElementById('reader');
   r.style.display = 'block';
@@ -280,108 +388,6 @@ function stopScan() {
     html5QrCode.stop().then(() => { document.getElementById('reader').style.display = 'none'; });
   }
 }
-
-// --- LOGIKA MONITORING ---
-
-function pilihSubTab(tab) {
-  document.getElementById('sub-harian').style.display = tab === 'harian' ? 'block' : 'none';
-  document.getElementById('sub-histori').style.display = tab === 'histori' ? 'block' : 'none';
-  document.getElementById('btnTabHarian').className = tab === 'harian' ? 'btn btn-sm btn-success w-100 fw-bold' : 'btn btn-sm btn-outline-success w-100 fw-bold';
-  document.getElementById('btnTabHistori').className = tab === 'histori' ? 'btn btn-sm btn-success w-100 fw-bold' : 'btn btn-sm btn-outline-success w-100 fw-bold';
-  
-  if(tab === 'histori') muatHistoriMatrix();
-}
-
-// Modifikasi switchTab untuk poin 2 (Latest Date)
-function switchTab(tab) {
-  const inputNik = document.getElementById('nik').value.trim();
-  if (tab === 'monitoring') {
-    if (!AUTHORIZED_NIK.includes(inputNik)) {
-      alert("⚠️ AKSES DITOLAK!\nNIK Anda tidak memiliki izin.");
-      return;
-    }
-    // Poin 2: Ambil tanggal terbaru dari server
-    document.getElementById('loader').style.display = 'flex';
-    fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: "getLatestDate" }) })
-    .then(res => res.json())
-    .then(res => {
-      document.getElementById('filterTgl').value = res.latestDate;
-      muatMonitoring();
-    });
-  }
-
-  document.querySelectorAll('.tab-item, .page').forEach(el => el.classList.remove('active'));
-  if(tab === 'so') {
-    document.querySelector('.tab-item:nth-child(1)').classList.add('active');
-    document.getElementById('page-so').classList.add('active');
-  } else {
-    document.querySelector('.tab-item:nth-child(2)').classList.add('active');
-    document.getElementById('page-monitoring').classList.add('active');
-  }
-}
-
-function muatMonitoring() {
-  const tgl = document.getElementById('filterTgl').value;
-  document.getElementById('loader').style.display = 'flex';
-  fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: "getMonitoring", tanggal: tgl }) })
-  .then(res => res.json())
-  .then(data => {
-    let html = "";
-    data.forEach(r => {
-      const sel = Number(r[11]);
-      const sCol = sel < 0 ? "text-danger" : (sel > 0 ? "text-success" : "");
-      html += `<tr><td>${r[4]}</td><td>${r[5]}</td><td>${r[6]}</td><td class="fw-bold text-primary">${r[10]}</td><td class="fw-bold ${sCol}">${sel}</td><td>${String(r[2]).split(' ')[0]}</td></tr>`;
-    });
-    document.getElementById('bodyMonitoring').innerHTML = html || "<tr><td colspan='6' class='text-center'>Data Kosong</td></tr>";
-    document.getElementById('loader').style.display = 'none';
-  });
-}
-
-function muatHistoriMatrix() {
-  document.getElementById('loader').style.display = 'flex';
-  fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: "getHistoriMatrix" }) })
-  .then(res => res.json())
-  .then(res => {
-    // Buat Header (PLU, DESCP, LOK, C2 + Tanggal-tanggal ke samping)
-    let hHtml = `<tr><th>PLU</th><th>DESCP</th><th>LOK</th><th>C2</th>`;
-    res.headers.forEach(h => hHtml += `<th>${h}</th>`);
-    hHtml += `</tr>`;
-    document.getElementById('headMatrix').innerHTML = hHtml;
-
-    // Buat Body (Data Selisih)
-    let bHtml = "";
-    res.rows.forEach(r => {
-      bHtml += `<tr>
-        <td>${r.plu}</td>
-        <td style="min-width:120px">${r.descp}</td>
-        <td>${r.lok}</td>
-        <td>${r.c2}</td>`;
-      
-      res.headers.forEach(h => {
-        let val = r.vals[h] || "-";
-        // Warna Merah jika minus (kurang), Hijau jika plus (lebih)
-        let style = val < 0 ? "color:red;font-weight:bold" : (val > 0 ? "color:green;font-weight:bold" : "");
-        bHtml += `<td class="text-center" style="${style}">${val}</td>`;
-      });
-      bHtml += `</tr>`;
-    });
-    document.getElementById('bodyMatrix').innerHTML = bHtml;
-    document.getElementById('loader').style.display = 'none';
-  })
-  .catch(err => {
-    console.error("Error Matrix:", err);
-    document.getElementById('loader').style.display = 'none';
-  });
-}
-
-function unduh() {
-  const tgl = document.getElementById('filterTgl').value;
-  // Poin 4: Download sesuai tanggal yang dipilih
-  window.open(SCRIPT_URL + "?action=export&tgl=" + tgl, "_blank");
-}
-
-function refreshForm() { location.reload(); }
-
 </script>
 </body>
 </html>
