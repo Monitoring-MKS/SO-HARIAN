@@ -33,8 +33,34 @@
 </head>
 <body>
 
-  <div id="loader"><b>MEMPROSES DATA...</b></div>
-  <div class="header">SO HARIAN ITEM PANTAUAN</div>
+<div class="modal fade" id="lovModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h6 class="modal-title">PILIH ITEM</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0">
+        <div class="p-2">
+          <input type="text" id="cariLov" class="form-control form-control-sm" placeholder="Cari Nama/PLU/Barcode..." onkeyup="filterTabelLov()">
+        </div>
+        <div class="table-responsive" style="max-height: 400px;">
+          <table class="table table-sm table-hover" style="font-size: 11px;">
+            <thead class="table-secondary sticky-top">
+              <tr><th>BARCODE</th><th>PLU</th><th>DESCP</th><th>LOKASI</th><th>C2</th></tr>
+            </thead>
+            <tbody id="bodyLov"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <div id="loader"><b>LOAD DATA...</b></div>
+  <div class="header">SO HARIAN WH MAKASSAR EWAKO</div>
 
   <div class="nav-tabs-custom">
     <div class="tab-item active" onclick="switchTab('so')">📝 INPUT SO</div>
@@ -48,10 +74,26 @@
       <div class="card">
         <form id="soForm">
           <div class="f-group"><label>TGL SO</label><input type="date" id="tgl"></div>
+<div class="f-group">
+  <label>KETERANGAN SO</label>
+  <select id="kategori" class="form-select border-0 p-0 shadow-none" style="font-size: 14px;">
+    <option value="SO ROKOK">SO ROKOK</option>
+    <option value="SO SUSU PREMIUM">SO SUSU PREMIUM</option>
+    <option value="SO ITEM PRIMER">SO ITEM PRIMER</option>
+    <option value="SO PARTIAL">SO PARTIAL</option>
+
+  </select>
+</div>
           <div class="f-group"><label>NIK</label><input type="text" id="nik" placeholder="INPUT NIK"></div>
           <div class="f-group"><label>NAMA</label><input type="text" id="nama" readonly placeholder="-"></div>
           <div class="f-group"><label>BARCODE</label><input type="text" id="barcode" placeholder="SCAN/INPUT"><button type="button" onclick="startScan()" style="border:none;background:none;font-size:18px;">📷</button></div>
-          <div class="f-group"><label>PLU</label><input type="text" id="plu" placeholder="INPUT PLU"></div>
+          <div class="f-group">
+  <label>PLU</label>
+  <div class="d-flex w-100">
+    <input type="text" id="plu" placeholder="INPUT PLU" class="flex-grow-1">
+    <button type="button" onclick="bukaLov()" class="btn btn-sm btn-outline-primary border-0">🔍</button>
+  </div>
+</div>
           <div class="f-group"><label>DESCP</label><input type="text" id="descp" readonly placeholder="-"></div>
           <div class="f-group"><label>LOKASI</label><input type="text" id="lokasi" readonly placeholder="-"></div>
           <div class="f-group"><label>C2</label><input type="text" id="c2" readonly placeholder="-"></div>
@@ -61,13 +103,32 @@
         </form>
       </div>
       <div class="btn-grid">
-        <button onclick="simpanKeAntrean()" class="btn-act" style="background:#007bff;">SAVE DATA</button>
+        <button onclick="simpanKeAntrean()" class="btn-act" style="background:#007bff;">SIMPAN</button>
         <button onclick="refreshForm()" class="btn-act" style="background:#6c757d;">REFRESH</button>
-        <button id="btnKirimServer" onclick="kirimSemuaKeServer()" class="btn-act" style="grid-column: span 2; background:#ff5722; display:none;">🚀 KIRIM KE SERVER</button>
+        <button id="btnKirimServer" onclick="kirimSemuaKeServer()" class="btn-act" style="grid-column: span 2; background:#ff5722; display:none;">🚀 KIRIM DATA</button>
       </div>
     </div>
 
 <div id="page-monitoring" class="page">
+  <div class="card p-2 mb-2">
+    <div class="row g-2">
+      <div class="col-6">
+        <label class="small fw-bold">TGL:</label>
+        <input type="date" id="filterTgl" class="form-control form-control-sm" onchange="renderMonitoringHarian()">
+      </div>
+      <div class="col-6">
+        <label class="small fw-bold">JENIS SO:</label>
+        <select id="filterKategori" onchange="jalankanFilter()" class="form-select form-select-sm">
+          <option value="ALL">SEMUA</option>
+          <option value="SO ROKOK">ROKOK</option>
+          <option value="SO SUSU PREMIUM">SUSU</option>
+          <option value="SO ITEM PRIMER">PRIMER</option>
+          <option value="SO PARTIAL">PARTIAL</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
   <div class="card p-2 mb-2">
     <div class="d-flex gap-1">
       <button onclick="pilihSubTab('harian')" id="btnTabHarian" class="btn btn-sm btn-success w-100 fw-bold">📅 HARIAN</button>
@@ -76,18 +137,17 @@
   </div>
 
   <div id="sub-harian">
-    <div class="card p-2 mb-2">
-      <div class="d-flex gap-2 align-items-center">
-        <label class="small fw-bold">TGL:</label>
-        <input type="date" id="filterTgl" class="form-control form-control-sm">
-        <button onclick="muatMonitoring()" class="btn btn-primary btn-sm px-3">CARI</button>
-      </div>
-    </div>
     <div class="table-responsive">
       <table class="table table-sm table-striped border">
         <thead class="table-dark">
-          <tr><th>PLU</th><th>DESCP</th><th>LOK</th><th>FISIK</th><th>SEL</th><th>USER</th></tr>
-        </thead>
+  <tr>
+    <th>PLU</th>
+    <th>DESCP</th>
+    <th>FISIK</th>
+    <th>SEL</th>
+    <th>USER</th>
+    <th>ACTION</th> </tr>
+</thead>
         <tbody id="bodyMonitoring"></tbody>
       </table>
     </div>
@@ -106,12 +166,12 @@
 
 <script>
 
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyHa8CSes4fce_r6IvuwO4MM395BAM7ybR7WntgEvCuDvL4u5lf7ezpXvzD1PfDOT7b/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwGH5hz1xST2JRHuUu4gu313w4xqBzYd4o9p-oKoSzkzFnaFiyX0JKVyjBqdEOHgKHz/exec"; 
 
 const AUTHORIZED_NIK = ["06080176", "06040353", "01060319", "08081171", "10030732", "10062381", "03070494"];
 
 let ANTREAN_DATA = JSON.parse(localStorage.getItem('so_antrean')) || [];
-let DATA_P = [], DATA_I = [];
+let DATA_P = [], DATA_I = [], DATA_PANTAUAN = [];
 let html5QrCode;
 
 // --- GLOBAL CACHE UNTUK MONITORING ---
@@ -164,6 +224,7 @@ function loadDataFromServer() {
   .then(res => {
     DATA_P = res.petugas;
     DATA_I = res.items;
+    DATA_PANTAUAN = res.pantauan; // Tangkap data pantauan
     document.getElementById('loader').style.display = 'none';
     updateTombolKirim();
   })
@@ -182,6 +243,7 @@ function simpanKeAntrean() {
   
   const d = {
     tgl: document.getElementById('tgl').value,
+    kategori: document.getElementById('kategori').value,
     nik: document.getElementById('nik').value,
     nama: document.getElementById('nama').value,
     barcode: document.getElementById('barcode').value,
@@ -255,29 +317,38 @@ function muatSemuaDataMonitoring() {
 }
 
 function renderMonitoringHarian() {
-  const tglFilter = document.getElementById('filterTgl').value; // Mengambil "yyyy-mm-dd"
-  if (!CACHE_MONITORING || !tglFilter) return;
+  const tglFilter = document.getElementById('filterTgl').value;
+  const katFilter = document.getElementById('filterKategori').value;
+  if (!CACHE_MONITORING) return;
 
-  // Karena di Apps Script sudah kita ubah ke string "yyyy-MM-dd", 
-  // pencocokan di browser sekarang jadi sangat mudah dan pasti akurat
-  const filtered = CACHE_MONITORING.filter(r => r[0] === tglFilter);
+  const filtered = CACHE_MONITORING.filter(r => {
+    const cocokTgl = r[0] === tglFilter;
+    const cocokKat = katFilter === "ALL" || r[13] === katFilter;
+    return cocokTgl && cocokKat;
+  });
 
   let html = "";
-  filtered.forEach(r => {
+  filtered.forEach((r, index) => {
     const sel = Number(r[11]);
     const sCol = sel < 0 ? "text-danger" : (sel > 0 ? "text-success" : "");
+    
+    // Tombol Koreksi hanya muncul jika selisih != 0
+    const btnKoreksi = sel !== 0 ? 
+      `<button onclick='siapkanKoreksi(${JSON.stringify(r)})' class='btn btn-xs btn-outline-warning' style='font-size:9px; padding:2px 5px;'>REVISI</button>` : 
+      `<span class='text-muted'>-</span>`;
+
     html += `<tr>
       <td>${r[4]}</td>
-      <td>${r[5]}</td>
-      <td>${r[6]}</td>
+      <td><div style="max-width:80px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${r[5]}</div></td>
       <td class="fw-bold text-primary">${r[10]}</td>
       <td class="fw-bold ${sCol}">${sel}</td>
       <td>${String(r[2]).split(' ')[0]}</td>
+      <td>${btnKoreksi}</td>
     </tr>`;
   });
   
   document.getElementById('bodyMonitoring').innerHTML = 
-    html || "<tr><td colspan='6' class='text-center'>Data Kosong di Tanggal: " + tglFilter + "</td></tr>";
+    html || "<tr><td colspan='6' class='text-center'>Data Kosong</td></tr>";
 }
 
 // Fungsi tombol CARI di monitoring (sekarang instant)
@@ -285,17 +356,28 @@ function muatMonitoring() {
   renderMonitoringHarian();
 }
 
+// Fungsi pembantu agar satu dropdown filter bisa mengupdate kedua tabel
+function jalankanFilter() {
+  renderMonitoringHarian();
+  renderMatrix();
+}
+
 function renderMatrix() {
   if (!CACHE_HISTORY) return;
+  const katFilter = document.getElementById('filterKategori').value;
   const res = CACHE_HISTORY;
-  
+
+  // Buat Header tetap sama
   let hHtml = `<tr><th>PLU</th><th>DESCP</th><th>LOK</th><th>C2</th>`;
   res.headers.forEach(h => hHtml += `<th>${h}</th>`);
   hHtml += `</tr>`;
   document.getElementById('headMatrix').innerHTML = hHtml;
 
   let bHtml = "";
-  res.rows.forEach(r => {
+  // Filter baris berdasarkan kategori yang dipilih
+  const rowsFiltered = res.rows.filter(r => katFilter === "ALL" || r.kategori === katFilter);
+
+  rowsFiltered.forEach(r => {
     bHtml += `<tr><td>${r.plu}</td><td style="min-width:120px">${r.descp}</td><td>${r.lok}</td><td>${r.c2}</td>`;
     res.headers.forEach(h => {
       let val = r.vals[h] || "-";
@@ -304,7 +386,8 @@ function renderMatrix() {
     });
     bHtml += `</tr>`;
   });
-  document.getElementById('bodyMatrix').innerHTML = bHtml;
+  
+  document.getElementById('bodyMatrix').innerHTML = bHtml || "<tr><td colspan='4' class='text-center'>Data Kategori Ini Kosong</td></tr>";
 }
 
 function pilihSubTab(tab) {
@@ -388,6 +471,105 @@ function stopScan() {
     html5QrCode.stop().then(() => { document.getElementById('reader').style.display = 'none'; });
   }
 }
+let MODAL_LOV;
+
+// Inisialisasi modal saat window load
+window.addEventListener('DOMContentLoaded', () => {
+  MODAL_LOV = new bootstrap.Modal(document.getElementById('lovModal'));
+});
+
+function bukaLov() {
+  const kategori = document.getElementById('kategori').value;
+  const bodyLov = document.getElementById('bodyLov');
+  bodyLov.innerHTML = "";
+  
+  let filteredItems = [];
+
+  if (kategori === "SO SUSU PREMIUM") {
+    // AMBIL DARI SHEET ITEM PANTAUAN
+    filteredItems = DATA_PANTAUAN.filter(item => {
+      const lok = String(item[3]).toUpperCase();
+      return lok.startsWith("A") || lok.startsWith("B");
+    }).map(item => {
+     return [item[0], item[1], item[2], item[3], item[4], item[5], 0];
+    });
+
+// 2. SORTING BERDASARKAN LOKASI (A-Z)
+    // Asumsi index lokasi di sheet ITEM PANTAUAN adalah index 2
+    filteredItems.sort((a, b) => {
+      return String(a[3]).localeCompare(String(b[3]));
+    });
+
+  } else {
+    // AMBIL DARI DATASOURCE (ROKOK & PRIME)
+    filteredItems = DATA_I.filter(item => {
+      const lok = String(item[3]).toUpperCase();
+      if (kategori === "SO ROKOK") {
+        return lok.startsWith("P3") || lok.startsWith("Q2");
+      } else if (kategori === "SO ITEM PRIMER") {
+        return lok.startsWith("S");
+      }
+      return false;
+    });
+ }
+
+  // Tampilkan ke Tabel LOV
+  filteredItems.forEach(item => {
+    let tr = document.createElement('tr');
+    tr.style.cursor = "pointer";
+    tr.innerHTML = `<td>${item[0]}</td><td>${item[1]}</td><td>${item[2]}</td><td>${item[3]}</td><td>${item[4]}</td>`;
+    tr.onclick = () => pilihItemDariLov(item);
+    bodyLov.appendChild(tr);
+  });
+
+  MODAL_LOV.show();
+}
+
+function filterTabelLov() {
+  const input = document.getElementById('cariLov').value.toUpperCase();
+  const rows = document.getElementById('bodyLov').getElementsByTagName('tr');
+  
+  for (let i = 0; i < rows.length; i++) {
+    const text = rows[i].innerText.toUpperCase();
+    rows[i].style.display = text.includes(input) ? "" : "none";
+  }
+}
+
+function pilihItemDariLov(item) {
+  document.getElementById('barcode').value = item[0];
+  document.getElementById('plu').value = item[1];
+  document.getElementById('descp').value = item[2];
+  document.getElementById('lokasi').value = item[3];
+  document.getElementById('c2').value = item[4];
+  document.getElementById('tag').value = item[5];
+  document.getElementById('oh').value = item[6];
+  
+  MODAL_LOV.hide();
+  setTimeout(() => document.getElementById('qty').focus(), 300);
+}
+function siapkanKoreksi(rowData) {
+  // 1. Pindah ke Tab Input SO
+  switchTab('so');
+
+  // 2. Isi Form dengan data yang akan dikoreksi
+  document.getElementById('tgl').value = rowData[0];
+  document.getElementById('kategori').value = rowData[13] || "SO PARTIAL";
+  document.getElementById('barcode').value = rowData[3];
+  document.getElementById('plu').value = rowData[4];
+  document.getElementById('descp').value = rowData[5];
+  document.getElementById('lokasi').value = rowData[6];
+  document.getElementById('c2').value = rowData[7];
+  document.getElementById('tag').value = rowData[8];
+  document.getElementById('oh').value = rowData[9];
+  
+  // 3. Fokus ke input QTY dan beri peringatan
+  document.getElementById('qty').value = "";
+  document.getElementById('qty').focus();
+  
+  alert("♻️ MODE KOREKSI AKTIF\nSilahkan input ulang QTY FISIK yang benar untuk item: " + rowData[5]);
+}
+
+
 </script>
 </body>
 </html>
