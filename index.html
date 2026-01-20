@@ -6,6 +6,24 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
+.btn-lov {
+    background-color: #e0e0e0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    color: #333;
+    font-weight: 800; /* Sangat Bold */
+    font-size: 12px;
+    padding: 2px 8px;
+    margin-left: 5px;
+    text-transform: uppercase;
+    box-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+}
+
+.btn-lov:active {
+    background-color: #bdbdbd;
+    box-shadow: inset 1px 1px 2px rgba(0,0,0,0.2);
+}
+
     body { background-color: #f0f2f5; font-family: sans-serif; padding-bottom: 70px; }
     .header { background-color: #90ee90; padding: 15px; text-align: center; font-weight: bold; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
     
@@ -18,20 +36,156 @@
     .page.active { display: block; }
 
     .card { background: white; border-radius: 12px; padding: 15px; border: none; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 15px; }
-    .f-group { display: flex; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
-    .f-group label { width: 35%; font-size: 12px; font-weight: bold; color: #444; }
-    .f-group input { width: 55%; border: none; outline: none; background: transparent; font-size: 14px; }
     
-    .table-responsive { max-height: 60vh; overflow-y: auto; border-radius: 8px; font-size: 10px; border: 1px solid #eee; }
-    table thead { position: sticky; top: 0; z-index: 10; }
+    .f-group { display: flex; align-items: center; border-bottom: 1px solid #eee; padding: 10px 0; }
+    .f-group label { width: 110px; min-width: 110px; font-size: 11px; font-weight: bold; color: #555; margin: 0; }
+    .f-group input, .f-group select { border: none !important; outline: none !important; box-shadow: none !important; background: transparent; font-size: 14px; width: 100%; color: #333; }
+    .input-wrapper { display: flex; width: 100%; align-items: center; }
+
+    .table-responsive { max-height: 75vh; overflow-x: auto; }
+    table.table { font-size: 13px; }
+    table thead th { padding: 12px 8px; text-align: center; white-space: nowrap; }
+    table tbody td { padding: 10px 8px; vertical-align: middle; }
+
+    /* Kolom Deskripsi Lebar & Full */
+    .col-descp { min-width: 200px; white-space: normal !important; word-wrap: break-word; line-height: 1.2; font-weight: bold; }
+
+    /* Teks Angka Besar */
+    .text-bold-large { font-size: 15px; font-weight: bold; }
 
     .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .btn-act { padding: 10px; border: none; border-radius: 8px; font-weight: bold; font-size: 12px; color: white; text-align: center; }
     #loader { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); display:flex; justify-content:center; align-items:center; z-index:10001; }
-    #reader { width: 100%; margin-bottom: 10px; border-radius: 12px; overflow: hidden; }
+    #reader { width: 100%; margin-bottom: 10px; border-radius: 12px; overflow: hidden; border: 2px solid #28a745; }
   </style>
 </head>
 <body>
+
+<div id="loader"><b>LOAD DATA...</b></div>
+<div class="header">SO HARIAN WH MAKASSAR EWAKO</div>
+
+<div class="nav-tabs-custom">
+  <div class="tab-item active" onclick="switchTab('so')">📝 INPUT SO</div>
+  <div class="tab-item" onclick="switchTab('monitoring')">📊 MONITORING</div>
+</div>
+
+<div class="container text-uppercase">
+  <div id="page-so" class="page active">
+    <div id="reader" style="display:none;"></div>
+    <div class="card">
+      <form id="soForm">
+        <div class="f-group"><label>TGL SO</label><input type="date" id="tgl"></div>
+        <div class="f-group">
+          <label>KETERANGAN SO</label>
+          <select id="kategori">
+            <option value="SO ROKOK">SO ROKOK</option>
+            <option value="SO SUSU PREMIUM">SO SUSU PREMIUM</option>
+            <option value="SO ITEM PRIMER">SO ITEM PRIMER</option>
+            <option value="SO PARTIAL">SO PARTIAL</option>
+          </select>
+        </div>
+        <div class="f-group"><label>NIK</label><input type="text" id="nik" placeholder="INPUT NIK"></div>
+        <div class="f-group"><label>NAMA</label><input type="text" id="nama" readonly placeholder="-"></div>
+        <div class="f-group">
+          <label>BARCODE</label>
+          <div class="input-wrapper">
+            <input type="text" id="barcode" placeholder="SCAN/INPUT">
+            <button type="button" onclick="startScan()" style="border:none;background:none;font-size:18px;padding:0 5px;">📷</button>
+          </div>
+        </div>
+        <div class="f-group">
+  <label>PLU</label>
+  <div class="input-wrapper">
+    <input type="text" id="plu" placeholder="INPUT PLU">
+    <button type="button" onclick="bukaLov()" class="btn-lov">LOV</button>
+  </div>
+</div>
+        <div class="f-group"><label>DESCP</label><input type="text" id="descp" readonly placeholder="-"></div>
+        <div class="f-group"><label>LOKASI</label><input type="text" id="lokasi" readonly placeholder="-"></div>
+        <div class="f-group"><label>C2</label><input type="text" id="c2" readonly placeholder="-"></div>
+        <div class="f-group"><label>TAG</label><input type="text" id="tag" readonly placeholder="-"></div>
+        <input type="hidden" id="oh" value="0">
+        <input type="hidden" id="hpp_hidden" value="0">
+        <div class="f-group"><label>QTY PCS</label><input type="number" id="qty" placeholder="0"></div>
+      </form>
+    </div>
+    <div class="btn-grid">
+      <button onclick="simpanKeAntrean()" class="btn-act" style="background:#007bff;">SIMPAN</button>
+      <button onclick="refreshForm()" class="btn-act" style="background:#6c757d;">REFRESH</button>
+      <button id="btnKirimServer" onclick="kirimSemuaKeServer()" class="btn-act" style="grid-column: span 2; background:#ff5722; display:none;">🚀 KIRIM DATA</button>
+    </div>
+  </div>
+
+  <div id="page-monitoring" class="page">
+    <div class="card p-2 mb-2">
+      <div class="row g-2">
+        <div class="col-6">
+          <label class="small fw-bold">TGL:</label>
+          <input type="date" id="filterTgl" class="form-control form-control-sm" onchange="renderMonitoringHarian()">
+        </div>
+        <div class="col-6">
+          <label class="small fw-bold">JENIS SO:</label>
+          <select id="filterKategori" onchange="jalankanFilter()" class="form-select form-select-sm">
+            <option value="ALL">SEMUA</option>
+            <option value="SO ROKOK">ROKOK</option>
+            <option value="SO SUSU PREMIUM">SUSU</option>
+            <option value="SO ITEM PRIMER">PRIMER</option>
+            <option value="SO PARTIAL">PARTIAL</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="card p-3 mb-2 bg-dark text-white shadow-sm">
+        <div class="row text-center">
+            <div class="col-6 border-end">
+                <small class="text-uppercase" style="font-size: 10px;">Item Selisih</small>
+                <div id="totalItemSelisih" class="h5 fw-bold mb-0">0</div>
+            </div>
+            <div class="col-6">
+                <small class="text-uppercase" style="font-size: 10px;">Total Rp Selisih</small>
+                <div id="totalNominalSelisih" class="h5 fw-bold mb-0">Rp 0</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card p-2 mb-2">
+      <div class="d-flex gap-1">
+        <button onclick="pilihSubTab('harian')" id="btnTabHarian" class="btn btn-sm btn-success w-100 fw-bold">📅 HARIAN</button>
+        <button onclick="pilihSubTab('histori')" id="btnTabHistori" class="btn btn-sm btn-outline-success w-100 fw-bold">📜 HISTORY</button>
+      </div>
+    </div>
+
+    <div id="sub-harian">
+      <div class="table-responsive">
+        <table class="table table-sm table-striped border">
+          <thead class="table-dark">
+            <tr>
+              <th>PLU</th>
+              <th>DESCP</th>
+              <th>FISIK</th>
+              <th>SEL</th>
+              <th>RP SEL</th>
+              <th>USER</th>
+              <th>ACTION</th>
+            </tr>
+          </thead>
+          <tbody id="bodyMonitoring"></tbody>
+        </table>
+      </div>
+      <button onclick="unduh()" class="btn btn-warning btn-sm w-100 mt-2 fw-bold text-dark">CEK DATA INPUT</button>
+    </div>
+
+    <div id="sub-histori" style="display:none;">
+      <div class="table-responsive">
+        <table class="table table-sm table-bordered">
+          <thead id="headMatrix" class="table-dark text-center align-middle sticky-top"></thead>
+          <tbody id="bodyMatrix" class="bg-white"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="modal fade" id="lovModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -58,126 +212,16 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-  <div id="loader"><b>LOAD DATA...</b></div>
-  <div class="header">SO HARIAN WH MAKASSAR EWAKO</div>
-
-  <div class="nav-tabs-custom">
-    <div class="tab-item active" onclick="switchTab('so')">📝 INPUT SO</div>
-    <div class="tab-item" onclick="switchTab('monitoring')">📊 MONITORING</div>
-  </div>
-
-  <div class="container text-uppercase">
-    
-    <div id="page-so" class="page active">
-      <div id="reader" style="display:none;"></div>
-      <div class="card">
-        <form id="soForm">
-          <div class="f-group"><label>TGL SO</label><input type="date" id="tgl"></div>
-<div class="f-group">
-  <label>KETERANGAN SO</label>
-  <select id="kategori" class="form-select border-0 p-0 shadow-none" style="font-size: 14px;">
-    <option value="SO ROKOK">SO ROKOK</option>
-    <option value="SO SUSU PREMIUM">SO SUSU PREMIUM</option>
-    <option value="SO ITEM PRIMER">SO ITEM PRIMER</option>
-    <option value="SO PARTIAL">SO PARTIAL</option>
-
-  </select>
-</div>
-          <div class="f-group"><label>NIK</label><input type="text" id="nik" placeholder="INPUT NIK"></div>
-          <div class="f-group"><label>NAMA</label><input type="text" id="nama" readonly placeholder="-"></div>
-          <div class="f-group"><label>BARCODE</label><input type="text" id="barcode" placeholder="SCAN/INPUT"><button type="button" onclick="startScan()" style="border:none;background:none;font-size:18px;">📷</button></div>
-          <div class="f-group">
-  <label>PLU</label>
-  <div class="d-flex w-100">
-    <input type="text" id="plu" placeholder="INPUT PLU" class="flex-grow-1">
-    <button type="button" onclick="bukaLov()" class="btn btn-sm btn-outline-primary border-0">🔍</button>
-  </div>
-</div>
-          <div class="f-group"><label>DESCP</label><input type="text" id="descp" readonly placeholder="-"></div>
-          <div class="f-group"><label>LOKASI</label><input type="text" id="lokasi" readonly placeholder="-"></div>
-          <div class="f-group"><label>C2</label><input type="text" id="c2" readonly placeholder="-"></div>
-          <div class="f-group"><label>TAG</label><input type="text" id="tag" readonly placeholder="-"></div>
-          <div class="f-group" style="display:none;"><label>OH</label><input type="text" id="oh" readonly placeholder="0"></div>
-          <div class="f-group"><label>QTY PCS</label><input type="number" id="qty" placeholder="0"></div>
-        </form>
-      </div>
-      <div class="btn-grid">
-        <button onclick="simpanKeAntrean()" class="btn-act" style="background:#007bff;">SIMPAN</button>
-        <button onclick="refreshForm()" class="btn-act" style="background:#6c757d;">REFRESH</button>
-        <button id="btnKirimServer" onclick="kirimSemuaKeServer()" class="btn-act" style="grid-column: span 2; background:#ff5722; display:none;">🚀 KIRIM DATA</button>
-      </div>
-    </div>
-
-<div id="page-monitoring" class="page">
-  <div class="card p-2 mb-2">
-    <div class="row g-2">
-      <div class="col-6">
-        <label class="small fw-bold">TGL:</label>
-        <input type="date" id="filterTgl" class="form-control form-control-sm" onchange="renderMonitoringHarian()">
-      </div>
-      <div class="col-6">
-        <label class="small fw-bold">JENIS SO:</label>
-        <select id="filterKategori" onchange="jalankanFilter()" class="form-select form-select-sm">
-          <option value="ALL">SEMUA</option>
-          <option value="SO ROKOK">ROKOK</option>
-          <option value="SO SUSU PREMIUM">SUSU</option>
-          <option value="SO ITEM PRIMER">PRIMER</option>
-          <option value="SO PARTIAL">PARTIAL</option>
-        </select>
-      </div>
-    </div>
-  </div>
-
-  <div class="card p-2 mb-2">
-    <div class="d-flex gap-1">
-      <button onclick="pilihSubTab('harian')" id="btnTabHarian" class="btn btn-sm btn-success w-100 fw-bold">📅 HARIAN</button>
-      <button onclick="pilihSubTab('histori')" id="btnTabHistori" class="btn btn-sm btn-outline-success w-100 fw-bold">📜 HISTORY</button>
-    </div>
-  </div>
-
-  <div id="sub-harian">
-    <div class="table-responsive">
-      <table class="table table-sm table-striped border">
-        <thead class="table-dark">
-  <tr>
-    <th>PLU</th>
-    <th>DESCP</th>
-    <th>FISIK</th>
-    <th>SEL</th>
-    <th>USER</th>
-    <th>ACTION</th> </tr>
-</thead>
-        <tbody id="bodyMonitoring"></tbody>
-      </table>
-    </div>
-    <button onclick="unduh()" class="btn btn-warning btn-sm w-100 mt-2 fw-bold text-dark">📥 DOWNLOAD REPORT (.CSV)</button>
-  </div>
-
-  <div id="sub-histori" style="display:none;">
-    <div class="table-responsive" style="max-height: 75vh;">
-      <table class="table table-sm table-bordered" style="font-size:10px;">
-        <thead id="headMatrix" class="table-dark text-center align-middle sticky-top"></thead>
-        <tbody id="bodyMatrix" class="bg-white"></tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
 <script>
-
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwGH5hz1xST2JRHuUu4gu313w4xqBzYd4o9p-oKoSzkzFnaFiyX0JKVyjBqdEOHgKHz/exec"; 
-
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzNF8H7A81gmRALErGkRaZwsFoKS88vssH0UIG1NNKWjr6L-sy_41uN0tIfPsuhDhwl/exec"; 
 const AUTHORIZED_NIK = ["6080176", "6040353", "1060319", "8081171", "10030732", "10062381", "3070494"];
 
 let ANTREAN_DATA = JSON.parse(localStorage.getItem('so_antrean')) || [];
 let DATA_P = [], DATA_I = [], DATA_PANTAUAN = [];
 let html5QrCode;
-
-// --- GLOBAL CACHE UNTUK MONITORING ---
-let CACHE_MONITORING = null; // Menyimpan data report harian
-let CACHE_HISTORY = null;    // Menyimpan data matrix histori
-let DATA_IS_STALE = true;    // Penanda jika ada data baru masuk dan perlu refresh cache
+let CACHE_MONITORING = null;
+let CACHE_HISTORY = null;
+let DATA_IS_STALE = true;
 
 window.onload = function() {
   const t = new Date();
@@ -186,27 +230,21 @@ window.onload = function() {
   loadDataFromServer();
 };
 
-// --- FUNGSI CORE ---
 function switchTab(tab) {
   const inputNik = document.getElementById('nik').value.trim();
-
   if (tab === 'monitoring') {
     if (!AUTHORIZED_NIK.includes(inputNik)) {
-      alert("⚠️ AKSES DITOLAK!\nNIK Anda tidak memiliki izin untuk membuka laporan monitoring.");
+      alert("⚠️ AKSES DITOLAK!\nMasukkan NIK yang berwenang di halaman Input terlebih dahulu.");
       return;
     }
-    
-    // Cek apakah perlu loading dari server atau gunakan cache
     if (DATA_IS_STALE || !CACHE_MONITORING) {
        muatSemuaDataMonitoring(); 
     } else {
-       renderMonitoringHarian(); // Instant render dari cache
+       renderMonitoringHarian();
     }
   }
-
   document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
-  
   if(tab === 'so') {
     document.querySelector('.tab-item:nth-child(1)').classList.add('active');
     document.getElementById('page-so').classList.add('active');
@@ -216,7 +254,6 @@ function switchTab(tab) {
   }
 }
 
-// Ambil data master (Petugas & Barang)
 function loadDataFromServer() {
   document.getElementById('loader').style.display = 'flex';
   fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: "getData" }) })
@@ -224,7 +261,7 @@ function loadDataFromServer() {
   .then(res => {
     DATA_P = res.petugas;
     DATA_I = res.items;
-    DATA_PANTAUAN = res.pantauan; // Tangkap data pantauan
+    DATA_PANTAUAN = res.pantauan;
     document.getElementById('loader').style.display = 'none';
     updateTombolKirim();
   })
@@ -234,10 +271,12 @@ function loadDataFromServer() {
   });
 }
 
-// --- LOGIKA DATA INPUT ---
 function simpanKeAntrean() {
   const qty = document.getElementById('qty').value;
-  if (!document.getElementById('nama').value || !document.getElementById('plu').value || !qty) {
+  const nama = document.getElementById('nama').value;
+  const plu = document.getElementById('plu').value;
+  
+  if (!nama || nama === "-" || !plu || qty === "") {
     alert("⚠️ DATA TIDAK LENGKAP!"); return;
   }
   
@@ -245,14 +284,15 @@ function simpanKeAntrean() {
     tgl: document.getElementById('tgl').value,
     kategori: document.getElementById('kategori').value,
     nik: document.getElementById('nik').value,
-    nama: document.getElementById('nama').value,
+    nama: nama,
     barcode: document.getElementById('barcode').value,
-    plu: document.getElementById('plu').value,
+    plu: plu,
     descp: document.getElementById('descp').value,
     lokasi: document.getElementById('lokasi').value,
     c2: document.getElementById('c2').value,
     tag: document.getElementById('tag').value,
     oh: document.getElementById('oh').value || 0,
+    hpp: document.getElementById('hpp_hidden').value || 0,
     qty: qty
   };
 
@@ -260,7 +300,7 @@ function simpanKeAntrean() {
   localStorage.setItem('so_antrean', JSON.stringify(ANTREAN_DATA));
   updateTombolKirim();
   
-  ['barcode','plu','descp','lokasi','c2','tag','oh','qty'].forEach(id => document.getElementById(id).value = "");
+  ['barcode','plu','descp','lokasi','c2','tag','oh','qty','hpp_hidden'].forEach(id => document.getElementById(id).value = "");
   document.getElementById('barcode').focus();
 }
 
@@ -268,7 +308,6 @@ function kirimSemuaKeServer() {
   const btn = document.getElementById('btnKirimServer');
   btn.disabled = true;
   btn.innerText = "⏳ MENGIRIM...";
-
   fetch(SCRIPT_URL, {
     method: "POST",
     mode: "no-cors",
@@ -280,8 +319,6 @@ function kirimSemuaKeServer() {
     localStorage.removeItem('so_antrean');
     updateTombolKirim();
     btn.disabled = false;
-    
-    // PENANDA PENTING: Set stale agar monitoring refresh data saat dibuka nanti
     DATA_IS_STALE = true; 
   })
   .catch(err => {
@@ -290,12 +327,8 @@ function kirimSemuaKeServer() {
   });
 }
 
-// --- LOGIKA MONITORING (CACHE OPTIMIZED) ---
-
 function muatSemuaDataMonitoring() {
   document.getElementById('loader').style.display = 'flex';
-  
-  // Ambil dua data sekaligus (Harian & Matrix) untuk efisiensi loading
   Promise.all([
     fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: "getMonitoring", tanggal: "ALL" }) }).then(r => r.json()),
     fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: "getHistoriMatrix" }) }).then(r => r.json())
@@ -303,112 +336,153 @@ function muatSemuaDataMonitoring() {
   .then(([dataHarian, dataMatrix]) => {
     CACHE_MONITORING = dataHarian;
     CACHE_HISTORY = dataMatrix;
-    DATA_IS_STALE = false; // Reset status stale
-    
+    DATA_IS_STALE = false;
     renderMonitoringHarian();
     if(document.getElementById('sub-histori').style.display === 'block') renderMatrix();
-    
     document.getElementById('loader').style.display = 'none';
   })
   .catch(err => {
-    console.error(err);
     document.getElementById('loader').style.display = 'none';
   });
 }
 
 function renderMonitoringHarian() {
-  const tglFilter = document.getElementById('filterTgl').value;
-  const katFilter = document.getElementById('filterKategori').value;
-  if (!CACHE_MONITORING) return;
+    const tglFilter = document.getElementById('filterTgl').value;
+    const katFilter = document.getElementById('filterKategori').value;
+    if (!CACHE_MONITORING) return;
 
-  const filtered = CACHE_MONITORING.filter(r => {
-    const cocokTgl = r[0] === tglFilter;
-    const cocokKat = katFilter === "ALL" || r[13] === katFilter;
-    return cocokTgl && cocokKat;
-  });
+    // --- LOGIKA AKUMULASI (GROUP BY PLU) ---
+    const groupData = {};
 
-  let html = "";
-  filtered.forEach((r, index) => {
-    const sel = Number(r[11]);
-    const sCol = sel < 0 ? "text-danger" : (sel > 0 ? "text-success" : "");
-    
-    // Tombol Koreksi hanya muncul jika selisih != 0
-    const btnKoreksi = sel !== 0 ? 
-      `<button onclick='siapkanKoreksi(${JSON.stringify(r)})' class='btn btn-xs btn-outline-warning' style='font-size:9px; padding:2px 5px;'>REVISI</button>` : 
-      `<span class='text-muted'>-</span>`;
+    CACHE_MONITORING.forEach(r => {
+        const tglData = r[0]; // Tanggal
+        const plu = r[4];    // PLU
+        const kategoriData = r[13]; // Kategori
 
-    html += `<tr>
-      <td>${r[4]}</td>
-      <td><div style="max-width:80px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${r[5]}</div></td>
-      <td class="fw-bold text-primary">${r[10]}</td>
-      <td class="fw-bold ${sCol}">${sel}</td>
-      <td>${String(r[2]).split(' ')[0]}</td>
-      <td>${btnKoreksi}</td>
-    </tr>`;
-  });
-  
-  document.getElementById('bodyMonitoring').innerHTML = 
-    html || "<tr><td colspan='6' class='text-center'>Data Kosong</td></tr>";
-}
+        // Filter berdasarkan Tgl dan Kategori dulu
+        if (tglData === tglFilter && (katFilter === "ALL" || kategoriData === katFilter)) {
+            if (!groupData[plu]) {
+                // Jika PLU belum ada di object, buat baru (copy array)
+                groupData[plu] = [...r];
+                groupData[plu][10] = Number(r[10]); // Pastikan Fisik adalah angka
+                groupData[plu][11] = Number(r[11]); // Pastikan Selisih Qty angka
+                groupData[plu][15] = Number(r[15]); // Pastikan Rp Selisih angka
+            } else {
+                // Jika PLU sudah ada, akumulasikan nilainya
+                groupData[plu][10] += Number(r[10]); // Tambah Fisik
+                groupData[plu][11] += Number(r[11]); // Tambah Selisih Qty
+                groupData[plu][15] += Number(r[15]); // Tambah Rp Selisih
+                // User diisi dengan "MULTIPLE" atau tetap user terakhir
+                groupData[plu][2] = "REKAP"; 
+            }
+        }
+    });
 
-// Fungsi tombol CARI di monitoring (sekarang instant)
-function muatMonitoring() {
-  renderMonitoringHarian();
-}
+    // Ubah kembali object groupData menjadi Array untuk di-render
+    let filtered = Object.values(groupData);
 
-// Fungsi pembantu agar satu dropdown filter bisa mengupdate kedua tabel
-function jalankanFilter() {
-  renderMonitoringHarian();
-  renderMatrix();
+    // --- LOGIKA HITUNG TOTAL SUMMARY (BOX HITAM) ---
+    let totalRp = 0;
+    let totalItem = 0;
+
+    filtered.forEach(r => {
+        const rp = Number(r[15]) || 0;
+        const qtySel = Number(r[11]) || 0;
+        if (qtySel !== 0) {
+            totalRp += rp;
+            totalItem++;
+        }
+    });
+
+    const formatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
+    document.getElementById('totalItemSelisih').innerText = totalItem + " Item";
+    document.getElementById('totalNominalSelisih').innerText = formatter.format(totalRp);
+    document.getElementById('totalNominalSelisih').style.color = totalRp < 0 ? "#ff4d4d" : "#45f542";
+
+    // --- SORT BY ABSOLUTE RP SELISIH ---
+    filtered.sort((a, b) => Math.abs(Number(b[15])) - Math.abs(Number(a[15])));
+
+    let html = "";
+    filtered.forEach((r) => {
+        const qtySel = Number(r[11]);
+        const rpSel = Number(r[15]) || 0;
+        const sCol = qtySel < 0 ? "text-danger" : (qtySel > 0 ? "text-success" : "text-muted");
+        
+        html += `<tr>
+            <td class="text-center">${r[4]}</td>
+            <td class="col-descp">${r[5]}</td>
+            <td class="text-center text-primary text-bold-large">${r[10]}</td>
+            <td class="text-center ${sCol} text-bold-large">${qtySel}</td>
+            <td class="${sCol} fw-bold">${formatter.format(rpSel)}</td>
+            <td class="text-center" style="font-size:10px;">${r[2]}</td>
+            <td class="text-center">
+                <button onclick='siapkanKoreksi(${JSON.stringify(r)})' class='btn btn-sm btn-outline-warning fw-bold' style="font-size:10px;">REVISI</button>
+            </td>
+        </tr>`;
+    });
+    document.getElementById('bodyMonitoring').innerHTML = html || "<tr><td colspan='7' class='text-center'>Data Kosong</td></tr>";
 }
 
 function renderMatrix() {
   if (!CACHE_HISTORY) return;
   const katFilter = document.getElementById('filterKategori').value;
   const res = CACHE_HISTORY;
-
-  // Buat Header tetap sama
   let hHtml = `<tr><th>PLU</th><th>DESCP</th><th>LOK</th><th>C2</th>`;
   res.headers.forEach(h => hHtml += `<th>${h}</th>`);
   hHtml += `</tr>`;
   document.getElementById('headMatrix').innerHTML = hHtml;
 
   let bHtml = "";
-  // Filter baris berdasarkan kategori yang dipilih
   const rowsFiltered = res.rows.filter(r => katFilter === "ALL" || r.kategori === katFilter);
-
   rowsFiltered.forEach(r => {
-    bHtml += `<tr><td>${r.plu}</td><td style="min-width:120px">${r.descp}</td><td>${r.lok}</td><td>${r.c2}</td>`;
+    bHtml += `<tr>
+        <td class="text-center">${r.plu}</td>
+        <td class="col-descp">${r.descp}</td>
+        <td class="text-center">${r.lok}</td>
+        <td class="text-center">${r.c2}</td>`;
     res.headers.forEach(h => {
       let val = r.vals[h] || "-";
-      let style = val < 0 ? "color:red;font-weight:bold" : (val > 0 ? "color:green;font-weight:bold" : "");
+      let style = val < 0 ? "color:red;font-weight:bold;font-size:15px;" : (val > 0 ? "color:green;font-weight:bold;font-size:15px;" : "");
       bHtml += `<td class="text-center" style="${style}">${val}</td>`;
     });
     bHtml += `</tr>`;
   });
-  
-  document.getElementById('bodyMatrix').innerHTML = bHtml || "<tr><td colspan='4' class='text-center'>Data Kategori Ini Kosong</td></tr>";
+  document.getElementById('bodyMatrix').innerHTML = bHtml || "<tr><td colspan='4' class='text-center'>Data Kosong</td></tr>";
 }
+
+function jalankanFilter() { renderMonitoringHarian(); if(document.getElementById('sub-histori').style.display === 'block') renderMatrix(); }
 
 function pilihSubTab(tab) {
   document.getElementById('sub-harian').style.display = tab === 'harian' ? 'block' : 'none';
   document.getElementById('sub-histori').style.display = tab === 'histori' ? 'block' : 'none';
   document.getElementById('btnTabHarian').className = tab === 'harian' ? 'btn btn-sm btn-success w-100 fw-bold' : 'btn btn-sm btn-outline-success w-100 fw-bold';
   document.getElementById('btnTabHistori').className = tab === 'histori' ? 'btn btn-sm btn-success w-100 fw-bold' : 'btn btn-sm btn-outline-success w-100 fw-bold';
-  
   if(tab === 'histori') renderMatrix();
 }
 
-// --- FUNGSI PENDUKUNG LAINNYA ---
 function unduh() {
   const tgl = document.getElementById('filterTgl').value;
-  if (!tgl) {
-    alert("Silahkan pilih tanggal terlebih dahulu!");
-    return;
+  if (!tgl) { 
+    alert("⚠️ SILAKAN PILIH TANGGAL TERLEBIH DAHULU!"); 
+    return; 
   }
-  // Membuka tab baru untuk mendownload CSV langsung dari Apps Script
-  const downloadUrl = SCRIPT_URL + "?action=export&tgl=" + tgl;
+
+  document.getElementById('loader').style.display = 'flex';
+
+  // ID Spreadsheet Anda
+  const ssId = "1ck1vFv0S9s5f0pGbhYc1OP3uh3kxqMvdMGmXPmorBsA/edit?"; 
+  
+  // GID dari sheet "HASIL SO" (Cek di URL Sheet Anda)
+  const gidHasilsO = "gid=0#gid=0"; 
+
+  // URL ini khusus mendownload SATU SHEET SAJA (HASIL SO) dalam format Excel
+  const downloadUrl = "https://docs.google.com/spreadsheets/d/" + ssId + "/export?format=xlsx&gid=" + gidHasilsO;
+  
   window.open(downloadUrl, "_blank");
+
+  setTimeout(() => {
+    document.getElementById('loader').style.display = 'none';
+  }, 3000);
 }
 
 function updateTombolKirim() {
@@ -419,7 +493,6 @@ function updateTombolKirim() {
 
 function refreshForm() { location.reload(); }
 
-// Pencarian NIK & Barang tetap sama (Final)
 document.getElementById('nik').onblur = function() {
   const val = this.value.trim();
   if (!val) return;
@@ -429,8 +502,7 @@ document.getElementById('nik').onblur = function() {
     document.getElementById('barcode').focus();
   } else {
     alert("NIK TIDAK DITEMUKAN!");
-    this.value = "";
-    document.getElementById('nama').value = "-";
+    this.value = ""; document.getElementById('nama').value = "-";
   }
 };
 
@@ -446,10 +518,9 @@ function cariBarang(val, idx, tipe) {
     document.getElementById('c2').value = f[4];
     document.getElementById('tag').value = f[5];
     document.getElementById('oh').value = f[6];
+    document.getElementById('hpp_hidden').value = f[9] || 0;
     setTimeout(() => document.getElementById('qty').focus(), 300);
-  } else {
-    alert(tipe + " TIDAK DITEMUKAN!");
-  }
+  } else { alert(tipe + " TIDAK DITEMUKAN!"); }
 }
 
 document.getElementById('barcode').onchange = function() { cariBarang(this.value, 0, "BARCODE"); };
@@ -459,61 +530,39 @@ function startScan() {
   const r = document.getElementById('reader');
   r.style.display = 'block';
   html5QrCode = new Html5Qrcode("reader");
-  html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (txt) => {
+  html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: {width: 250, height: 150} }, (txt) => {
     document.getElementById('barcode').value = txt;
     cariBarang(txt, 0, "BARCODE");
     stopScan();
-  });
+  }).catch(err => alert("Kamera Error"));
 }
 
-function stopScan() {
-  if(html5QrCode) {
-    html5QrCode.stop().then(() => { document.getElementById('reader').style.display = 'none'; });
-  }
-}
+function stopScan() { if(html5QrCode) html5QrCode.stop().then(() => { document.getElementById('reader').style.display = 'none'; }); }
+
 let MODAL_LOV;
-
-// Inisialisasi modal saat window load
-window.addEventListener('DOMContentLoaded', () => {
-  MODAL_LOV = new bootstrap.Modal(document.getElementById('lovModal'));
-});
+window.addEventListener('DOMContentLoaded', () => { MODAL_LOV = new bootstrap.Modal(document.getElementById('lovModal')); });
 
 function bukaLov() {
   const kategori = document.getElementById('kategori').value;
   const bodyLov = document.getElementById('bodyLov');
   bodyLov.innerHTML = "";
-  
   let filteredItems = [];
 
   if (kategori === "SO SUSU PREMIUM") {
-    // AMBIL DARI SHEET ITEM PANTAUAN
     filteredItems = DATA_PANTAUAN.filter(item => {
       const lok = String(item[3]).toUpperCase();
       return lok.startsWith("A") || lok.startsWith("B");
-    }).map(item => {
-     return [item[0], item[1], item[2], item[3], item[4], item[5], 0];
-    });
-
-// 2. SORTING BERDASARKAN LOKASI (A-Z)
-    // Asumsi index lokasi di sheet ITEM PANTAUAN adalah index 2
-    filteredItems.sort((a, b) => {
-      return String(a[3]).localeCompare(String(b[3]));
-    });
-
+    }).map(item => [item[0], item[1], item[2], item[3], item[4], item[5], 0, 0, 0, item[9]]);
   } else {
-    // AMBIL DARI DATASOURCE (ROKOK & PRIME)
     filteredItems = DATA_I.filter(item => {
       const lok = String(item[3]).toUpperCase();
-      if (kategori === "SO ROKOK") {
-        return lok.startsWith("P3") || lok.startsWith("Q2");
-      } else if (kategori === "SO ITEM PRIMER") {
-        return lok.startsWith("S");
-      }
-      return false;
+      if (kategori === "SO ROKOK") return lok.startsWith("P3") || lok.startsWith("Q2");
+      if (kategori === "SO ITEM PRIMER") return lok.startsWith("S");
+      return true;
     });
- }
+  }
 
-  // Tampilkan ke Tabel LOV
+  filteredItems.sort((a, b) => String(a[3]).localeCompare(String(b[3])));
   filteredItems.forEach(item => {
     let tr = document.createElement('tr');
     tr.style.cursor = "pointer";
@@ -521,14 +570,12 @@ function bukaLov() {
     tr.onclick = () => pilihItemDariLov(item);
     bodyLov.appendChild(tr);
   });
-
   MODAL_LOV.show();
 }
 
 function filterTabelLov() {
   const input = document.getElementById('cariLov').value.toUpperCase();
   const rows = document.getElementById('bodyLov').getElementsByTagName('tr');
-  
   for (let i = 0; i < rows.length; i++) {
     const text = rows[i].innerText.toUpperCase();
     rows[i].style.display = text.includes(input) ? "" : "none";
@@ -542,16 +589,14 @@ function pilihItemDariLov(item) {
   document.getElementById('lokasi').value = item[3];
   document.getElementById('c2').value = item[4];
   document.getElementById('tag').value = item[5];
-  document.getElementById('oh').value = item[6];
-  
+  document.getElementById('oh').value = item[6] || 0;
+  document.getElementById('hpp_hidden').value = item[9] || 0;
   MODAL_LOV.hide();
   setTimeout(() => document.getElementById('qty').focus(), 300);
 }
-function siapkanKoreksi(rowData) {
-  // 1. Pindah ke Tab Input SO
-  switchTab('so');
 
-  // 2. Isi Form dengan data yang akan dikoreksi
+function siapkanKoreksi(rowData) {
+  switchTab('so');
   document.getElementById('tgl').value = rowData[0];
   document.getElementById('kategori').value = rowData[13] || "SO PARTIAL";
   document.getElementById('barcode').value = rowData[3];
@@ -561,15 +606,10 @@ function siapkanKoreksi(rowData) {
   document.getElementById('c2').value = rowData[7];
   document.getElementById('tag').value = rowData[8];
   document.getElementById('oh').value = rowData[9];
-  
-  // 3. Fokus ke input QTY dan beri peringatan
   document.getElementById('qty').value = "";
   document.getElementById('qty').focus();
-  
-  alert("♻️ MODE KOREKSI AKTIF\nSilahkan input ulang QTY FISIK yang benar untuk item: " + rowData[5]);
+  alert("♻️ MODE REVISI AKTIF");
 }
-
-
 </script>
 </body>
 </html>
