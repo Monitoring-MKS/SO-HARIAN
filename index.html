@@ -6,6 +6,35 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
+.storage-card {
+    background: #fff9e6;
+    border-left: 4px solid #ffc107;
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 12px;
+}
+.storage-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px dashed #ccc;
+}
+.storage-item:last-child { border-bottom: none; }
+.storage-info { flex-grow: 1; }
+.storage-check {
+    width: 24px;
+    height: 24px;
+    accent-color: #28a745;
+}
+.storage-title {
+    font-weight: bold;
+    color: #856404;
+    margin-bottom: 5px;
+    display: block;
+}
+
 .btn-lov {
     background-color: #e0e0e0;
     border: 1px solid #ccc;
@@ -55,14 +84,205 @@
 
     .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .btn-act { padding: 10px; border: none; border-radius: 8px; font-weight: bold; font-size: 12px; color: white; text-align: center; }
-    #loader { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); display:flex; justify-content:center; align-items:center; z-index:10001; }
-    #reader { width: 100%; margin-bottom: 10px; border-radius: 12px; overflow: hidden; border: 2px solid #28a745; }
+
+#loader { 
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+    background: rgba(255, 255, 255, 0.95); 
+    backdrop-filter: blur(8px);
+    display: flex; flex-direction: column; justify-content: center; align-items: center; 
+    z-index: 30000; 
+}
+
+#loadingCanvas {
+    filter: drop-shadow(0 0 8px rgba(255, 0, 0, 0.3));
+}
+
+.loading-text {
+    margin-top: 20px;
+    font-family: 'Segoe UI', sans-serif;
+    font-weight: bold;
+    color: #333;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* ===== MODE HP ===== */
+@media (max-width: 768px) {
+
+  .table-monitoring thead {
+    display: none;
+  }
+
+  .table-monitoring,
+  .table-monitoring tbody,
+  .table-monitoring tr,
+  .table-monitoring td {
+    display: block;
+    width: 100%;
+  }
+
+  .table-monitoring tr {
+    background: #fff;
+    margin-bottom: 10px;
+    border-radius: 10px;
+    padding: 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  }
+
+  .table-monitoring td {
+    text-align: left;
+    padding: 6px 0;
+    border: none;
+    font-size: 13px;
+  }
+
+  .table-monitoring td::before {
+    content: attr(data-label);
+    font-weight: bold;
+    display: inline-block;
+    width: 45%;
+    color: #555;
+  }
+
+  .btn-revisi {
+    width: 100%;
+    margin-top: 6px;
+  }
+}
+
+
+@keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.95); } }
+
+
   </style>
 </head>
 <body>
 
-<div id="loader"><b>LOAD DATA...</b></div>
-<div class="header">SO HARIAN WH MAKASSAR EWAKO</div>
+<!-- LOADING OVERLAY -->
+<div id="loadingSave" style="
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.4);
+  z-index:2000;
+  align-items:center;
+  justify-content:center;
+">
+  <div class="bg-white p-4 rounded text-center shadow">
+    <div class="spinner-border text-warning mb-2"></div>
+    <div class="fw-bold">Menyimpan revisi...</div>
+  </div>
+</div>
+
+
+<!-- MODAL REVISI SO -->
+<div class="modal fade" id="modalRevisi" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-warning">
+        <h6 class="modal-title fw-bold">♻️ REVISI DATA SO</h6>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        <input type="hidden" id="rev_rowId">
+
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="small fw-bold">PLU</label>
+            <input id="rev_plu" class="form-control form-control-sm" readonly>
+          </div>
+          <div class="col-6">
+            <label class="small fw-bold">OH</label>
+            <input id="rev_oh" class="form-control form-control-sm" readonly>
+          </div>
+
+          <div class="col-12">
+            <label class="small fw-bold">DESCP</label>
+            <input id="rev_descp" class="form-control form-control-sm" readonly>
+          </div>
+
+          <div class="col-6">
+            <label class="small fw-bold">QTY FISIK LAMA</label>
+            <input id="rev_qty_lama" class="form-control form-control-sm" readonly>
+          </div>
+          <div class="col-6">
+            <label class="small fw-bold">QTY STORAGE LAMA</label>
+            <input id="rev_storage_lama" class="form-control form-control-sm" readonly>
+          </div>
+
+          <div class="col-6">
+            <label class="small fw-bold text-danger">QTY FISIK BARU</label>
+            <input type="number" id="rev_qty_baru" class="form-control form-control-sm">
+          </div>
+          <div class="col-6">
+            <label class="small fw-bold text-danger">QTY STORAGE BARU</label>
+            <input type="number" id="rev_storage_baru" class="form-control form-control-sm">
+          </div>
+
+          <div class="col-12">
+            <label class="small fw-bold">ALASAN REVISI</label>
+            <input id="rev_alasan" class="form-control form-control-sm">
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">BATAL</button>
+        <button id="btnSimpanRevisi" onclick="simpanRevisi()" class="btn btn-warning fw-bold">
+  💾 SIMPAN REVISI
+</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LOGIN PAGE -->
+<div id="loginPage" style="
+  position:fixed;
+  top:0;left:0;
+  width:100%;height:100%;
+  background:#f0f2f5;
+  z-index:20000;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+">
+  <div class="card shadow" style="width:320px;">
+    <div class="card-header text-center bg-success text-white fw-bold">
+      LOGIN SO HARIAN
+    </div>
+    <div class="card-body">
+      <div class="mb-2">
+        <label class="small fw-bold">NIK</label>
+        <input type="text" id="loginNik" class="form-control form-control-sm" placeholder="Masukkan NIK">
+      </div>
+      <div class="mb-3">
+        <label class="small fw-bold">PASSWORD</label>
+        <input type="password" id="loginPass" class="form-control form-control-sm" placeholder="Password">
+      </div>
+      <button onclick="prosesLogin()" class="btn btn-success w-100 fw-bold">
+        🔓 LOGIN
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="loader">
+  <canvas id="loadingCanvas" width="150" height="150"></canvas>
+  <div class="loading-text">MENYIAPKAN DATA...</div>
+</div>
+<div class="header d-flex justify-content-between align-items-center">
+  <span>SO HARIAN-WH MAKASSAR EWAKO</span>
+  <button 
+    onclick="logout()" 
+    class="btn btn-sm btn-danger fw-bold"
+    id="btnLogout"
+    style="display:none;">
+    🔒 LOG OUT
+  </button>
+</div>
 
 <div class="nav-tabs-custom">
   <div class="tab-item active" onclick="switchTab('so')">📝 INPUT SO</div>
@@ -76,14 +296,15 @@
       <form id="soForm">
         <div class="f-group"><label>TGL SO</label><input type="date" id="tgl"></div>
         <div class="f-group">
-          <label>KETERANGAN SO</label>
-          <select id="kategori">
-            <option value="SO ROKOK">SO ROKOK</option>
-            <option value="SO SUSU PREMIUM">SO SUSU PREMIUM</option>
-            <option value="SO ITEM PRIMER">SO ITEM PRIMER</option>
-            <option value="SO PARTIAL">SO PARTIAL</option>
-          </select>
-        </div>
+  <label>KETERANGAN SO</label>
+  <select id="kategori">
+    <option value="" disabled selected>-- PILIH KETERANGAN --</option>
+    <option value="SO ROKOK">SO ROKOK</option>
+    <option value="SO SUSU PREMIUM">SO SUSU PREMIUM</option>
+    <option value="SO ITEM PRIMER">SO ITEM PRIMER</option>
+    <option value="SO PARTIAL">SO PARTIAL</option>
+  </select>
+</div>
         <div class="f-group"><label>NIK</label><input type="text" id="nik" placeholder="INPUT NIK"></div>
         <div class="f-group"><label>NAMA</label><input type="text" id="nama" readonly placeholder="-"></div>
         <div class="f-group">
@@ -106,12 +327,20 @@
         <div class="f-group"><label>TAG</label><input type="text" id="tag" readonly placeholder="-"></div>
         <input type="hidden" id="oh" value="0">
         <input type="hidden" id="hpp_hidden" value="0">
-        <div class="f-group"><label>QTY PCS</label><input type="number" id="qty" placeholder="0"></div>
+<div class="f-group">
+<label>QTY PCS</label><input type="number" id="qty" placeholder="0"></div>
+<div id="storageArea" style="display:none;" class="storage-card shadow-sm">
+    <span class="storage-title">DETAIL LOKASI STORAGE (CEKLIST JIKA SESUAI):</span>
+    <div id="storageList"></div>
+    <div class="mt-2 text-end small">
+        <strong>Total Terakumulasi: </strong><span id="storageTotalAccumulated">0</span>
+    </div>
+</div>
       </form>
     </div>
     <div class="btn-grid">
       <button onclick="simpanKeAntrean()" class="btn-act" style="background:#007bff;">SIMPAN</button>
-      <button onclick="refreshForm()" class="btn-act" style="background:#6c757d;">REFRESH</button>
+      <button onclick="clearDataInput()" class="btn-act" style="background:#dc3545;">❌ CLEAR DATA</button>
       <button id="btnKirimServer" onclick="kirimSemuaKeServer()" class="btn-act" style="grid-column: span 2; background:#ff5722; display:none;">🚀 KIRIM DATA</button>
     </div>
   </div>
@@ -155,7 +384,11 @@
         <button onclick="pilihSubTab('histori')" id="btnTabHistori" class="btn btn-sm btn-outline-success w-100 fw-bold">📜 HISTORY</button>
       </div>
     </div>
-
+<select id="sortHistory" class="form-select form-select-sm mb-2"
+<select id="sortHistory" onchange="renderMatrix()">
+  <option value="none">Normal</option>
+  <option value="last">Sort Tgl Terakhir</option>
+</select>
     <div id="sub-harian">
       <div class="table-responsive">
         <table class="table table-sm table-striped border">
@@ -163,18 +396,19 @@
             <tr>
               <th>PLU</th>
               <th>DESCP</th>
-              <th>FISIK</th>
+              <td>LOKASI</td> 
               <th>SEL</th>
               <th>RP SEL</th>
-              <th>USER</th>
               <th>ACTION</th>
             </tr>
           </thead>
           <tbody id="bodyMonitoring"></tbody>
         </table>
       </div>
-      <button onclick="unduh()" class="btn btn-warning btn-sm w-100 mt-2 fw-bold text-dark">CEK DATA INPUT</button>
-    </div>
+<button onclick="unduh()" class="btn btn-success">
+  ⬇️ Download Harian
+</button>
+   </div>
 
     <div id="sub-histori" style="display:none;">
       <div class="table-responsive">
@@ -183,6 +417,9 @@
           <tbody id="bodyMatrix" class="bg-white"></tbody>
         </table>
       </div>
+<button class="btn btn-success btn-sm mb-2" onclick="downloadHistoryExcel()">
+  ⬇️ Download History
+</button>
     </div>
   </div>
 </div>
@@ -211,97 +448,338 @@
   </div>
 </div>
 
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzNF8H7A81gmRALErGkRaZwsFoKS88vssH0UIG1NNKWjr6L-sy_41uN0tIfPsuhDhwl/exec"; 
-const AUTHORIZED_NIK = ["6080176", "6040353", "1060319", "8081171", "10030732", "10062381", "3070494"];
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxLdUm04wc_WU7KpYenHQdYTVg2lBBBkK1uc8bUENTZbKtYwF2zU9Gt8DTkmONxbOHD/exec"; 
 
 let ANTREAN_DATA = JSON.parse(localStorage.getItem('so_antrean')) || [];
-let DATA_P = [], DATA_I = [], DATA_PANTAUAN = [];
+let DATA_P = [], DATA_I = [], DATA_PANTAUAN = [], DATA_STORAGE = [];
 let html5QrCode;
 let CACHE_MONITORING = null;
 let CACHE_HISTORY = null;
 let DATA_IS_STALE = true;
 
-window.onload = function() {
-  const t = new Date();
-  document.getElementById('tgl').valueAsDate = t;
-  document.getElementById('filterTgl').valueAsDate = t;
-  loadDataFromServer();
+window.switchTab = switchTab;
+window.onload = async function () {
+
+  lockUI();
+
+  showGlobalLoader("MENYIAPKAN DATA APLIKASI...");
+
+  try {
+    await loadSemuaDataAwal();
+
+    const loginUser = getLoginUser();
+
+    if (!loginUser) {
+      document.getElementById("loginPage").style.display = "flex";
+    } else {
+      masukAplikasi(loginUser);
+    }
+
+  } catch (e) {
+    alert("Gagal memuat data awal.\nCek koneksi internet.");
+  } finally {
+    hideGlobalLoader();
+    unlockUI();
+  }
 };
 
-function switchTab(tab) {
-  const inputNik = document.getElementById('nik').value.trim();
-  if (tab === 'monitoring') {
-    if (!AUTHORIZED_NIK.includes(inputNik)) {
-      alert("⚠️ AKSES DITOLAK!\nMasukkan NIK yang berwenang di halaman Input terlebih dahulu.");
+
+
+let LAST_UPDATE = 0;
+let AUTO_REFRESH_TIMER = null;
+let DATA_READY = false;
+
+function lockUI() {
+  document.querySelectorAll("input, select, button").forEach(el => {
+    // 🔓 JANGAN kunci elemen login
+    if (
+      el.closest("#loginPage") || 
+      el.id === "loginNik" || 
+      el.id === "loginPass"
+    ) {
       return;
     }
-    if (DATA_IS_STALE || !CACHE_MONITORING) {
-       muatSemuaDataMonitoring(); 
-    } else {
-       renderMonitoringHarian();
-    }
-  }
-  document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
-  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
-  if(tab === 'so') {
-    document.querySelector('.tab-item:nth-child(1)').classList.add('active');
-    document.getElementById('page-so').classList.add('active');
-  } else {
-    document.querySelector('.tab-item:nth-child(2)').classList.add('active');
-    document.getElementById('page-monitoring').classList.add('active');
-  }
-}
-
-function loadDataFromServer() {
-  document.getElementById('loader').style.display = 'flex';
-  fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: "getData" }) })
-  .then(res => res.json())
-  .then(res => {
-    DATA_P = res.petugas;
-    DATA_I = res.items;
-    DATA_PANTAUAN = res.pantauan;
-    document.getElementById('loader').style.display = 'none';
-    updateTombolKirim();
-  })
-  .catch(err => {
-    alert("Gagal Sinkron Data Master.");
-    document.getElementById('loader').style.display = 'none';
+    el.disabled = true;
   });
 }
 
-function simpanKeAntrean() {
-  const qty = document.getElementById('qty').value;
-  const nama = document.getElementById('nama').value;
-  const plu = document.getElementById('plu').value;
-  
-  if (!nama || nama === "-" || !plu || qty === "") {
-    alert("⚠️ DATA TIDAK LENGKAP!"); return;
-  }
-  
-  const d = {
-    tgl: document.getElementById('tgl').value,
-    kategori: document.getElementById('kategori').value,
-    nik: document.getElementById('nik').value,
-    nama: nama,
-    barcode: document.getElementById('barcode').value,
-    plu: plu,
-    descp: document.getElementById('descp').value,
-    lokasi: document.getElementById('lokasi').value,
-    c2: document.getElementById('c2').value,
-    tag: document.getElementById('tag').value,
-    oh: document.getElementById('oh').value || 0,
-    hpp: document.getElementById('hpp_hidden').value || 0,
-    qty: qty
-  };
 
-  ANTREAN_DATA.push(d);
-  localStorage.setItem('so_antrean', JSON.stringify(ANTREAN_DATA));
-  updateTombolKirim();
+function unlockUI() {
+  document.querySelectorAll("input, select, button").forEach(el => {
+    el.disabled = false;
+  });
+}
+
+async function muatMonitoringSilent() {
+  const res = await fetch(SCRIPT_URL, {
+    method: "POST",
+    body: JSON.stringify({
+      action: "getMonitoring",
+      tanggal: "ALL"
+    })
+  }).then(r => r.json());
+
+  CACHE_MONITORING = res;
+  renderMonitoringHarian();
+}
+
+
+
+async function cekUpdateMonitoring() {
+
+  if (!currentTab || currentTab !== "monitoring") return;
+
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "getLastUpdate" })
+    });
+
+    const json = await res.json();
+    const serverTime = Number(json.lastUpdate || 0);
+
+    if (serverTime > LAST_UPDATE) {
+      console.log("🔄 DATA BARU TERDETEKSI");
+      LAST_UPDATE = serverTime;
+
+      // ✅ AMBIL DATA BARU + RENDER
+     await muatMonitoringSilent();
+    }
+
+  } catch (e) {
+    console.warn("Auto refresh gagal:", e);
+  }
+}
+
+
+
+async function refreshDataSilent() {
+    try {
+        // Mengambil data monitoring & history terbaru tanpa menampilkan Loader (Silent)
+        const [resMonitoring, resHistory] = await Promise.all([
+            fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: "getMonitoring", tanggal: "ALL" }) }).then(r => r.json()),
+            fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: "getHistoriMatrix" }) }).then(r => r.json())
+        ]);
+
+        CACHE_MONITORING = resMonitoring;
+        CACHE_HISTORY = resHistory;
+        
+        // Jika sedang di halaman monitoring, langsung update tampilan
+        if (document.getElementById('page-monitoring').classList.contains('active')) {
+            renderMonitoringHarian();
+            if(document.getElementById('sub-histori').style.display === 'block') renderMatrix();
+        }
+        console.log("Data monitoring diperbarui otomatis.");
+    } catch (err) {
+        console.error("Gagal auto-refresh:", err);
+    }
+}
+
+async function loadDataLoginOnly() {
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "getData" })
+    });
+    const data = await res.json();
+    DATA_P = data.petugas || [];
+  } catch (err) {
+    alert("❌ Gagal memuat data login");
+    console.error(err);
+  }
+}
+
+
+async function loadSemuaDataAwal() {
   
-  ['barcode','plu','descp','lokasi','c2','tag','oh','qty','hpp_hidden'].forEach(id => document.getElementById(id).value = "");
-  document.getElementById('barcode').focus();
+  document.querySelector("#loader .loading-text").innerText =
+  "MENYIAPKAN DATA SO...";
+
+  try {
+    const [resMaster, resMonitoring, resHistory] = await Promise.all([
+      fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: "getData" }) }).then(r => r.json()),
+      fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: "getMonitoring", tanggal: "ALL" }) }).then(r => r.json()),
+      fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: "getHistoriMatrix" }) }).then(r => r.json())
+    ]);
+
+    DATA_P = resMaster.petugas;
+    DATA_I = resMaster.items;
+    DATA_PANTAUAN = resMaster.pantauan;
+    DATA_STORAGE = resMaster.storage || [];
+
+    CACHE_MONITORING = resMonitoring;
+    CACHE_HISTORY = resHistory;
+
+    DATA_READY = true;
+
+    document.getElementById("loader").style.display = "none";
+    unlockUI();
+
+    console.log("✅ DATA SIAP DIGUNAKAN");
+
+  } catch (err) {
+    console.error(err);
+    alert("❌ Gagal memuat data.\nPeriksa koneksi internet.");
+    lockUI();
+  }
+}
+function masukAplikasi(loginUser) {
+
+  console.log("👤 LOGIN USER:", loginUser);
+
+  document.getElementById("loginPage").style.display = "none";
+  document.getElementById("btnLogout").style.display = "inline-block";
+
+  unlockUI();
+
+  // isi identitas
+  document.getElementById("nik").value = loginUser.nik;
+  document.getElementById("nama").value = loginUser.nama;
+
+  const t = new Date();
+  document.getElementById("tgl").valueAsDate = t;
+  document.getElementById("filterTgl").valueAsDate = t;
+
+  DATA_READY = true;
+
+  console.log("✅ APP READY");
+}
+
+
+
+function logout() {
+  const yakin = confirm("Yakin ingin keluar dari aplikasi?");
+  if (!yakin) return;
+
+  // ❌ Hapus session login
+  sessionStorage.removeItem("loginUser");
+
+  // 🔒 Kunci UI total
+  lockUI();
+
+  // 🔄 Reset field user
+  document.getElementById("nik").value = "";
+  document.getElementById("nama").value = "-";
+  document.getElementById("loginNik").value = "";
+  document.getElementById("loginPass").value = "";
+
+  // 🔁 Kembali ke tab INPUT
+  document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+  document.querySelector('.tab-item:nth-child(1)').classList.add('active');
+  document.getElementById('page-so').classList.add('active');
+
+  // ❌ Sembunyikan monitoring
+  document.getElementById("page-monitoring").classList.remove("active");
+
+  // ❌ Sembunyikan tombol logout
+  document.getElementById("btnLogout").style.display = "none";
+
+  // 🔐 Tampilkan halaman login
+  document.getElementById("loginPage").style.display = "flex";
+
+  alert("🔒 Anda telah logout.");
+}
+
+
+function getLoginUser() {
+  const s = sessionStorage.getItem("loginUser");
+  if (s) {
+    return JSON.parse(s);
+  }
+
+  // FALLBACK (opsional)
+  const nikEl = document.getElementById("nik");
+  const namaEl = document.getElementById("nama");
+
+  if (nikEl && namaEl) {
+    const nik = nikEl.value.trim();
+    const nama = namaEl.value.trim();
+
+    if (nik && nama && nama !== "-") {
+      return {
+        nik: nik,
+        nama: nama,
+        role: "USER"
+      };
+    }
+  }
+
+  return null;
+}
+
+
+let currentTab = "so";
+
+function switchTab(tab) {
+
+  if (!DATA_READY) {
+    alert("⏳ Data belum siap");
+    return;
+  }
+
+  const loginUser = getLoginUser();
+  if (!loginUser) {
+    alert("⚠️ Silakan login terlebih dahulu");
+    return;
+  }
+
+  // Matikan auto refresh dulu
+  if (AUTO_REFRESH_TIMER) {
+    clearInterval(AUTO_REFRESH_TIMER);
+    AUTO_REFRESH_TIMER = null;
+  }
+
+  currentTab = tab;
+
+  // ================= MONITORING =================
+  if (tab === "monitoring") {
+
+    if (loginUser.role !== "ADMIN") {
+      alert("⛔ Monitoring hanya untuk ADMIN");
+      return;
+    }
+
+    bukaMonitoringAsli();
+
+    // Aktifkan auto refresh
+    AUTO_REFRESH_TIMER = setInterval(
+      cekUpdateMonitoring,
+      2500
+    );
+
+    return;
+  }
+
+  // ================= INPUT SO =================
+  if (tab === "so") {
+
+    document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+
+    document.querySelector('.tab-item:nth-child(1)').classList.add('active');
+    document.getElementById('page-so').classList.add('active');
+  }
+}
+
+function bukaMonitoringAsli() {
+  document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+
+  document.querySelector('.tab-item:nth-child(2)').classList.add('active');
+  document.getElementById('page-monitoring').classList.add('active');
+
+  renderMonitoringHarian();
+  if (document.getElementById('sub-histori').style.display === 'block') {
+    renderMatrix();
+  }
+
 }
 
 function kirimSemuaKeServer() {
@@ -328,7 +806,7 @@ function kirimSemuaKeServer() {
 }
 
 function muatSemuaDataMonitoring() {
-  document.getElementById('loader').style.display = 'flex';
+  
   Promise.all([
     fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: "getMonitoring", tanggal: "ALL" }) }).then(r => r.json()),
     fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: "getHistoriMatrix" }) }).then(r => r.json())
@@ -339,10 +817,10 @@ function muatSemuaDataMonitoring() {
     DATA_IS_STALE = false;
     renderMonitoringHarian();
     if(document.getElementById('sub-histori').style.display === 'block') renderMatrix();
-    document.getElementById('loader').style.display = 'none';
+    
   })
   .catch(err => {
-    document.getElementById('loader').style.display = 'none';
+    
   });
 }
 
@@ -357,22 +835,18 @@ function renderMonitoringHarian() {
     CACHE_MONITORING.forEach(r => {
         const tglData = r[0]; // Tanggal
         const plu = r[4];    // PLU
-        const kategoriData = r[13]; // Kategori
+        const kategoriData = r[17]; // Kategori
 
         // Filter berdasarkan Tgl dan Kategori dulu
         if (tglData === tglFilter && (katFilter === "ALL" || kategoriData === katFilter)) {
             if (!groupData[plu]) {
                 // Jika PLU belum ada di object, buat baru (copy array)
                 groupData[plu] = [...r];
-                groupData[plu][10] = Number(r[10]); // Pastikan Fisik adalah angka
-                groupData[plu][11] = Number(r[11]); // Pastikan Selisih Qty angka
-                groupData[plu][15] = Number(r[15]); // Pastikan Rp Selisih angka
+                groupData[plu][13] = Number(r[13]) || 0;
+                groupData[plu][15] = Number(r[15]) || 0;
             } else {
-                // Jika PLU sudah ada, akumulasikan nilainya
-                groupData[plu][10] += Number(r[10]); // Tambah Fisik
-                groupData[plu][11] += Number(r[11]); // Tambah Selisih Qty
-                groupData[plu][15] += Number(r[15]); // Tambah Rp Selisih
-                // User diisi dengan "MULTIPLE" atau tetap user terakhir
+                groupData[plu][13] = (Number(groupData[plu][13]) || 0) + (Number(r[13]) || 0);
+                groupData[plu][15] = (Number(groupData[plu][15]) || 0) + (Number(r[15]) || 0);
                 groupData[plu][2] = "REKAP"; 
             }
         }
@@ -387,7 +861,7 @@ function renderMonitoringHarian() {
 
     filtered.forEach(r => {
         const rp = Number(r[15]) || 0;
-        const qtySel = Number(r[11]) || 0;
+        const qtySel = Number(r[13]) || 0;
         if (qtySel !== 0) {
             totalRp += rp;
             totalItem++;
@@ -404,53 +878,177 @@ function renderMonitoringHarian() {
 
     let html = "";
     filtered.forEach((r) => {
-        const qtySel = Number(r[11]);
+        const qtySel = Number(r[13]);
         const rpSel = Number(r[15]) || 0;
         const sCol = qtySel < 0 ? "text-danger" : (qtySel > 0 ? "text-success" : "text-muted");
         
         html += `<tr>
             <td class="text-center">${r[4]}</td>
             <td class="col-descp">${r[5]}</td>
-            <td class="text-center text-primary text-bold-large">${r[10]}</td>
-            <td class="text-center ${sCol} text-bold-large">${qtySel}</td>
+            <td class="text-center text-primary fw-bold">${r[6]}</td> <!-- Lokasi -->
+            <td class="text-center ${sCol} fw-bold">${r[13]}</td>      <!-- SELISIH -->
             <td class="${sCol} fw-bold">${formatter.format(rpSel)}</td>
-            <td class="text-center" style="font-size:10px;">${r[2]}</td>
             <td class="text-center">
-                <button onclick='siapkanKoreksi(${JSON.stringify(r)})' class='btn btn-sm btn-outline-warning fw-bold' style="font-size:10px;">REVISI</button>
+                <button onclick='bukaModalRevisi(${JSON.stringify(r)})'
+ class='btn btn-sm btn-outline-warning fw-bold'>REVISI</button>
+
             </td>
         </tr>`;
     });
     document.getElementById('bodyMonitoring').innerHTML = html || "<tr><td colspan='7' class='text-center'>Data Kosong</td></tr>";
 }
 
+let MODAL_REVISI;
+document.addEventListener("DOMContentLoaded", () => {
+  MODAL_REVISI = new bootstrap.Modal(document.getElementById("modalRevisi"));
+});
+
+function bukaModalRevisi(r) {
+  document.getElementById("rev_rowId").value = r[r.length - 1];
+  document.getElementById("rev_plu").value = r[4];
+  document.getElementById("rev_descp").value = r[5];
+  document.getElementById("rev_oh").value = r[9];
+
+document.getElementById("rev_qty_lama").value = r[10];       // PCS lama
+document.getElementById("rev_storage_lama").value = r[11];  // STORAGE lama
+
+  document.getElementById("rev_qty_baru").value = 0;           // Default input baru
+  document.getElementById("rev_storage_baru").value = 0;       // Default storage baru
+  document.getElementById("rev_alasan").value = "";
+
+  MODAL_REVISI.show();
+}
+
+
+async function simpanRevisi() {
+  const btn = document.getElementById("btnSimpanRevisi");
+  const loader = document.getElementById("loadingSave");
+
+  btn.disabled = true;
+  loader.style.display = "flex";
+
+  const payload = {
+    action: "updateRevisi",
+    rowId: Number(rev_rowId.value),
+    qty_fisik: Number(rev_qty_baru.value),
+    qty_storage: Number(rev_storage_baru.value),
+    alasan: rev_alasan.value,
+    hpp: Number(document.getElementById("hpp_hidden").value) || 0
+  };
+
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }).then(r => r.json());
+
+    if (res.status !== "OK") {
+      alert("❌ Revisi gagal");
+      return;
+    }
+
+    MODAL_REVISI.hide();
+
+    // 🔥 REFRESH DATA TANPA LOADER
+    await muatMonitoringSilent();
+
+  } catch (e) {
+    alert("❌ Gagal menyimpan revisi");
+  } finally {
+    loader.style.display = "none";
+    btn.disabled = false;
+  }
+}
+
+
+
 function renderMatrix() {
   if (!CACHE_HISTORY) return;
+
   const katFilter = document.getElementById('filterKategori').value;
   const res = CACHE_HISTORY;
-  let hHtml = `<tr><th>PLU</th><th>DESCP</th><th>LOK</th><th>C2</th>`;
-  res.headers.forEach(h => hHtml += `<th>${h}</th>`);
+
+  /* ===== HEADER ===== */
+  let hHtml = `
+    <tr>
+      <th>PLU</th>
+      <th>DESCP</th>
+      <th>LOKASI</th>
+      <th>TAG</th>
+  `;
+
+  res.headers.forEach(tgl => {
+    hHtml += `<th class="text-center">${tgl}</th>`;
+  });
+
   hHtml += `</tr>`;
   document.getElementById('headMatrix').innerHTML = hHtml;
 
+  /* ===== BODY ===== */
+  let rowsFiltered = res.rows.filter(r =>
+    katFilter === "ALL" || r.kategori === katFilter
+  );
+/* ===== SORTING HISTORY (TGL TERAKHIR) ===== */
+const sortMode = document.getElementById("sortHistory")?.value || "none";
+
+if (sortMode === "last") {
+  const lastDate = res.headers[res.headers.length - 1];
+
+  rowsFiltered.sort((a, b) => {
+    const va = Math.abs(Number(a.vals[lastDate] || 0));
+    const vb = Math.abs(Number(b.vals[lastDate] || 0));
+    return vb - va; // DESC
+  });
+}
+
+
+
   let bHtml = "";
-  const rowsFiltered = res.rows.filter(r => katFilter === "ALL" || r.kategori === katFilter);
+
   rowsFiltered.forEach(r => {
-    bHtml += `<tr>
+    bHtml += `
+      <tr>
         <td class="text-center">${r.plu}</td>
         <td class="col-descp">${r.descp}</td>
         <td class="text-center">${r.lok}</td>
-        <td class="text-center">${r.c2}</td>`;
-    res.headers.forEach(h => {
-      let val = r.vals[h] || "-";
-      let style = val < 0 ? "color:red;font-weight:bold;font-size:15px;" : (val > 0 ? "color:green;font-weight:bold;font-size:15px;" : "");
-      bHtml += `<td class="text-center" style="${style}">${val}</td>`;
-    });
-    bHtml += `</tr>`;
-  });
-  document.getElementById('bodyMatrix').innerHTML = bHtml || "<tr><td colspan='4' class='text-center'>Data Kosong</td></tr>";
+        <td class="text-center">${r.tag || "-"}</td>
+    `;
+
+    res.headers.forEach(tgl => {
+      let cellHtml = "";
+let style = "";
+
+if (!(tgl in r.vals)) {
+  // ❌ TIDAK ADA SO
+  cellHtml = "X";
+  style = "color:#999;font-weight:bold;";
+} else {
+  // ✅ ADA SO
+  const val = Number(r.vals[tgl]);
+
+  if (val < 0) style = "color:red;font-weight:bold;";
+  else if (val > 0) style = "color:green;font-weight:bold;";
+
+  cellHtml = val;
 }
 
-function jalankanFilter() { renderMonitoringHarian(); if(document.getElementById('sub-histori').style.display === 'block') renderMatrix(); }
+bHtml += `<td class="text-center" style="${style}">${cellHtml}</td>`;
+
+    });
+
+    bHtml += `</tr>`;
+  });
+
+  document.getElementById('bodyMatrix').innerHTML =
+    bHtml || "<tr><td colspan='4' class='text-center'>Data Kosong</td></tr>";
+}
+
+function jalankanFilter() 
+{ 
+renderMonitoringHarian(); 
+if(document.getElementById('sub-histori').style.display === 'block') renderMatrix(); 
+
+}
 
 function pilihSubTab(tab) {
   document.getElementById('sub-harian').style.display = tab === 'harian' ? 'block' : 'none';
@@ -460,30 +1058,64 @@ function pilihSubTab(tab) {
   if(tab === 'histori') renderMatrix();
 }
 
-function unduh() {
-  const tgl = document.getElementById('filterTgl').value;
-  if (!tgl) { 
-    alert("⚠️ SILAKAN PILIH TANGGAL TERLEBIH DAHULU!"); 
-    return; 
+async function unduh() {
+
+  console.log("DOWNLOAD DIKLIK");
+
+  const tgl = document.getElementById("filterTgl").value;
+  const jenis = document.getElementById("filterKategori").value;
+
+
+  if (!tgl) {
+    alert("⚠️ Pilih tanggal monitoring terlebih dahulu");
+    return;
   }
 
-  document.getElementById('loader').style.display = 'flex';
+  // ✅ GUNAKAN LOADER YANG ADA
+  document.getElementById("loader").style.display = "flex";
 
-  // ID Spreadsheet Anda
-  const ssId = "1ck1vFv0S9s5f0pGbhYc1OP3uh3kxqMvdMGmXPmorBsA/edit?"; 
-  
-  // GID dari sheet "HASIL SO" (Cek di URL Sheet Anda)
-  const gidHasilsO = "gid=0#gid=0"; 
+  try {
+    const url =
+      SCRIPT_URL +
+      "?action=exportMonitoring" +
+      "&tgl=" + encodeURIComponent(tgl) +
+      "&jenis=" + encodeURIComponent(jenis);
 
-  // URL ini khusus mendownload SATU SHEET SAJA (HASIL SO) dalam format Excel
-  const downloadUrl = "https://docs.google.com/spreadsheets/d/" + ssId + "/export?format=xlsx&gid=" + gidHasilsO;
-  
-  window.open(downloadUrl, "_blank");
+    console.log("FETCH KE:", url);
 
-  setTimeout(() => {
-    document.getElementById('loader').style.display = 'none';
-  }, 3000);
+    const res = await fetch(url);
+    const json = await res.json();
+
+    console.log("DATA DARI SERVER:", json);
+
+    if (!json.rows || json.rows.length === 0) {
+      alert("Data kosong");
+      return;
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet([
+      json.header,
+      ...json.rows
+    ]);
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "REPORT SO");
+
+    XLSX.writeFile(
+      wb,
+      `REPORT_SO_${tgl}_${jenis}.xlsx`
+    );
+
+  } catch (err) {
+    console.error(err);
+    alert("Gagal download");
+  } finally {
+    document.getElementById("loader").style.display = "none";
+  }
 }
+
+
+
 
 function updateTombolKirim() {
   const btn = document.getElementById('btnKirimServer');
@@ -493,24 +1125,31 @@ function updateTombolKirim() {
 
 function refreshForm() { location.reload(); }
 
-document.getElementById('nik').onblur = function() {
+document.getElementById('nik').onchange = function () {
+
+
+  
   const val = this.value.trim();
   if (!val) return;
+
   let f = DATA_P.find(r => String(r[0]).trim() === val);
   if (f) {
     document.getElementById('nama').value = f[1];
     document.getElementById('barcode').focus();
   } else {
-    alert("NIK TIDAK DITEMUKAN!");
-    this.value = ""; document.getElementById('nama').value = "-";
+    alert("❌ NIK TIDAK DITEMUKAN!");
+    this.value = "";
+    document.getElementById('nama').value = "-";
   }
 };
+
 
 function cariBarang(val, idx, tipe) {
   const searchVal = String(val).trim();
   if (!searchVal) return;
   let f = DATA_I.find(r => String(r[idx]).trim() === searchVal);
   if (f) {
+    // ... (kode pengisian field yang sudah ada) ...
     document.getElementById('barcode').value = f[0];
     document.getElementById('plu').value = f[1];
     document.getElementById('descp').value = f[2];
@@ -519,8 +1158,103 @@ function cariBarang(val, idx, tipe) {
     document.getElementById('tag').value = f[5];
     document.getElementById('oh').value = f[6];
     document.getElementById('hpp_hidden').value = f[9] || 0;
+
+    // TAMPILKAN STORAGE
+    tampilkanStorage(f[1]); // Panggil berdasarkan PLU
+
     setTimeout(() => document.getElementById('qty').focus(), 300);
-  } else { alert(tipe + " TIDAK DITEMUKAN!"); }
+  } else { 
+    alert(tipe + " TIDAK DITEMUKAN!"); 
+    document.getElementById('storageArea').style.display = 'none';
+  }
+}
+
+function tampilkanStorage(plu) {
+    const listCont = document.getElementById('storageList');
+    const area = document.getElementById('storageArea');
+    listCont.innerHTML = "";
+
+    let matches = DATA_STORAGE.filter(s => String(s[0]).trim() === String(plu).trim());
+
+    if (matches.length > 0) {
+        area.style.display = 'block';
+        matches.forEach((m) => {
+            const div = document.createElement('div');
+            div.className = "storage-item";
+            div.innerHTML = `
+                <div class="storage-info">
+    <b>${m[1]}</b> 
+    (EXP: <span class="text-danger">${formatTanggalDDMMMYY(m[3])}</span>)<br>
+    <span class="text-primary fw-bold">QTY: ${m[2]}</span>
+</div>
+
+                <input type="checkbox" class="storage-check" data-qty="${m[2]}" onchange="hitungAkumulasiStorage()">
+            `;
+            listCont.appendChild(div);
+        });
+    } else {
+        area.style.display = 'none';
+    }
+}
+
+function hitungAkumulasiStorage() {
+    let totalStorage = 0;
+    document.querySelectorAll('.storage-check:checked').forEach(cb => {
+        totalStorage += Number(cb.getAttribute('data-qty') || 0);
+    });
+    document.getElementById('storageTotalAccumulated').innerText = totalStorage;
+
+    // Update placeholder agar terlihat
+    const qtyEl = document.getElementById('qty');
+    qtyEl.placeholder = totalStorage > 0 ? "input Qty" : "0";
+}
+
+
+function simpanKeAntrean() {
+    const kategoriVal = document.getElementById('kategori').value;
+    if (!kategoriVal) {
+        alert("🚨 Pilih jenis SO dulu!");
+        return;
+    }
+
+    const qtyPCS = Number(document.getElementById('qty').value) || 0;
+    const qtyStorage = Number(document.getElementById('storageTotalAccumulated').innerText) || 0;
+
+    if (qtyPCS + qtyStorage <= 0) {
+        alert("⚠️ QUANTITY KOSONG!");
+        return;
+    }
+
+    const d = {
+        tgl: document.getElementById('tgl').value,
+        kategori: kategoriVal,
+        nik: document.getElementById('nik').value,
+        nama: document.getElementById('nama').value,
+        barcode: document.getElementById('barcode').value,
+        plu: document.getElementById('plu').value,
+        descp: document.getElementById('descp').value,
+        lokasi: document.getElementById('lokasi').value,
+        c2: document.getElementById('c2').value,
+        tag: document.getElementById('tag').value,
+        oh: document.getElementById('oh').value || 0,
+        hpp: document.getElementById('hpp_hidden').value || 0,
+        qtyPCS: qtyPCS,           // simpan PCS terpisah
+        qtyStorage: qtyStorage,   // simpan storage terpisah
+        qtyTotal: qtyPCS + qtyStorage
+    };
+
+    ANTREAN_DATA.push(d);
+    localStorage.setItem('so_antrean', JSON.stringify(ANTREAN_DATA));
+    updateTombolKirim();
+    resetInputHanyaBarang();
+}
+
+
+function resetInputHanyaBarang() {
+    ['barcode','plu','descp','lokasi','c2','tag','oh','qty','hpp_hidden'].forEach(id => document.getElementById(id).value = "");
+    document.getElementById('storageArea').style.display = 'none';
+    document.getElementById('storageTotalAccumulated').innerText = "0";
+    document.getElementById('barcode').focus();
 }
 
 document.getElementById('barcode').onchange = function() { cariBarang(this.value, 0, "BARCODE"); };
@@ -597,19 +1331,162 @@ function pilihItemDariLov(item) {
 
 function siapkanKoreksi(rowData) {
   switchTab('so');
+  
+  const pluClean = String(rowData[4]).replace(/'/g, "").trim();
+
   document.getElementById('tgl').value = rowData[0];
   document.getElementById('kategori').value = rowData[13] || "SO PARTIAL";
   document.getElementById('barcode').value = rowData[3];
-  document.getElementById('plu').value = rowData[4];
+  document.getElementById('plu').value = pluClean;
   document.getElementById('descp').value = rowData[5];
   document.getElementById('lokasi').value = rowData[6];
   document.getElementById('c2').value = rowData[7];
   document.getElementById('tag').value = rowData[8];
   document.getElementById('oh').value = rowData[9];
+  
   document.getElementById('qty').value = "";
+  
+  tampilkanStorage(pluClean); 
+
   document.getElementById('qty').focus();
-  alert("♻️ MODE REVISI AKTIF");
+  alert("♻️ MODE REVISI AKTIF untuk PLU: " + pluClean);
 }
+
+function prosesLogin() {
+if (!DATA_READY) {
+    alert("⏳ Data aplikasi masih disiapkan, mohon tunggu...");
+    return;
+  }
+
+  const nik = document.getElementById("loginNik").value.trim();
+  const pass = document.getElementById("loginPass").value.trim();
+
+  const petugas = DATA_P.find(p => String(p[0]).trim() === nik);
+  if (!petugas) return alert("❌ NIK tidak terdaftar");
+
+  const passwordServer = petugas[2] ? String(petugas[2]) : "234";
+  if (pass !== passwordServer) return alert("❌ Password salah");
+
+  const loginUser = {
+    nik: nik,
+    nama: petugas[1],
+    role: petugas[3] || "USER",
+    loginTime: Date.now()
+  };
+
+  sessionStorage.setItem("loginUser", JSON.stringify(loginUser));
+
+  masukAplikasi(loginUser);
+
+  alert("✅ Login berhasil\nSelamat bekerja, " + petugas[1]);
+}
+
+function formatTanggalDDMMMYY(value) {
+  if (!value) return "";
+
+  const date = new Date(value);
+  if (isNaN(date)) return value;
+
+  const bulan = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mmm = bulan[date.getMonth()];
+  const yy = String(date.getFullYear()).slice(-2);
+
+  return `${dd}-${mmm}-${yy}`;
+}
+function clearDataInput() {
+  const yakin = confirm("Batalkan input barang ini?");
+  if (!yakin) return;
+
+  // Reset hanya input barang (tidak menyentuh antrean & user)
+  resetInputHanyaBarang();
+
+  // Kosongkan qty PCS
+  document.getElementById('qty').value = "";
+
+  // Fokus kembali ke barcode
+  setTimeout(() => {
+    document.getElementById('barcode').focus();
+  }, 100);
+}
+
+function downloadHistoryExcel() {
+  if (!CACHE_HISTORY) {
+    alert("Data history belum tersedia");
+    return;
+  }
+
+  const res = CACHE_HISTORY;
+  const katFilter = document.getElementById('filterKategori')?.value || "ALL";
+  const sortMode = document.getElementById("sortHistory")?.value || "none";
+
+  /* ===== FILTER ===== */
+  let rowsFiltered = res.rows.filter(r =>
+    katFilter === "ALL" || r.kategori === katFilter
+  );
+
+  /* ===== SORT TGL TERAKHIR ===== */
+  if (sortMode === "last" && res.headers.length) {
+    const lastDate = res.headers[res.headers.length - 1];
+
+    rowsFiltered.sort((a, b) => {
+      const va = Math.abs(Number(a.vals[lastDate] || 0));
+      const vb = Math.abs(Number(b.vals[lastDate] || 0));
+      return vb - va;
+    });
+  }
+
+  /* ===== BUILD EXCEL DATA ===== */
+  let aoa = [];
+
+  // HEADER
+  let header = ["PLU", "DESCP", "LOKASI", "TAG", ...res.headers];
+  aoa.push(header);
+
+  // BODY
+  rowsFiltered.forEach(r => {
+    let row = [
+      r.plu,
+      r.descp,
+      r.lok,
+      r.tag || "-"
+    ];
+
+    res.headers.forEach(tgl => {
+      if (!(tgl in r.vals)) {
+        row.push("X"); // ❌ Tidak SO
+      } else {
+        row.push(r.vals[tgl]); // ✅ Selisih
+      }
+    });
+
+    aoa.push(row);
+  });
+
+  /* ===== EXPORT ===== */
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "HISTORY_SO");
+
+  XLSX.writeFile(
+    wb,
+    "HISTORY_SO_" + new Date().toISOString().slice(0,10) + ".xlsx"
+  );
+}
+
+function showGlobalLoader(text = "MENYIAPKAN DATA...") {
+  const loader = document.getElementById("loader");
+  loader.style.display = "flex";
+  loader.querySelector(".loading-text").innerText = text;
+}
+
+function hideGlobalLoader() {
+  document.getElementById("loader").style.display = "none";
+}
+
+
+
 </script>
 </body>
 </html>
