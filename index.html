@@ -54,8 +54,20 @@
 }
 
     body { background-color: #f0f2f5; font-family: sans-serif; padding-bottom: 70px; }
-    .header { background-color: #90ee90; padding: 15px; text-align: center; font-weight: bold; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
     
+.header { 
+    background-color: #1e8544; 
+    color: #ffffff; /* Merubah warna tulisan di header menjadi putih */
+    padding: 20px; 
+    text-align: center; 
+    font-weight: bold; 
+    font-variant: small-caps; /* Menambah variasi: Huruf kapital kecil */
+    font-size: 24px; /* Menambah ukuran tulisan */
+    position: sticky; 
+    top: 0; 
+    z-index: 1000; 
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
+}    
     .nav-tabs-custom { display: flex; background: white; position: sticky; top: 54px; z-index: 1000; border-bottom: 2px solid #ddd; }
     .tab-item { flex: 1; text-align: center; padding: 12px; font-weight: bold; cursor: pointer; color: #666; }
     .tab-item.active { color: #28a745; border-bottom: 3px solid #28a745; background: #f8fff8; }
@@ -76,10 +88,8 @@
     table thead th { padding: 12px 8px; text-align: center; white-space: nowrap; }
     table tbody td { padding: 10px 8px; vertical-align: middle; }
 
-    /* Kolom Deskripsi Lebar & Full */
     .col-descp { min-width: 200px; white-space: normal !important; word-wrap: break-word; line-height: 1.2; font-weight: bold; }
 
-    /* Teks Angka Besar */
     .text-bold-large { font-size: 15px; font-weight: bold; }
 
     .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -107,7 +117,6 @@
     animation: pulse 1.5s ease-in-out infinite;
 }
 
-/* ===== MODE HP ===== */
 @media (max-width: 768px) {
 
   .table-monitoring thead {
@@ -150,6 +159,16 @@
     margin-top: 6px;
   }
 }
+
+.app-version {
+  text-align: center;
+  font-size: 11px;
+  color: #6c757d;
+  margin-top: 10px;
+  margin-bottom: 15px;
+  letter-spacing: 0.5px;
+}
+
 
 
 @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.95); } }
@@ -265,6 +284,7 @@
       <button onclick="prosesLogin()" class="btn btn-success w-100 fw-bold">
         🔓 LOGIN
       </button>
+<div class="app-version">V.01.01.26@mks</div>
     </div>
   </div>
 </div>
@@ -497,7 +517,6 @@ let DATA_READY = false;
 
 function lockUI() {
   document.querySelectorAll("input, select, button").forEach(el => {
-    // 🔓 JANGAN kunci elemen login
     if (
       el.closest("#loginPage") || 
       el.id === "loginNik" || 
@@ -548,7 +567,6 @@ async function cekUpdateMonitoring() {
       console.log("🔄 DATA BARU TERDETEKSI");
       LAST_UPDATE = serverTime;
 
-      // ✅ AMBIL DATA BARU + RENDER
      await muatMonitoringSilent();
     }
 
@@ -561,7 +579,6 @@ async function cekUpdateMonitoring() {
 
 async function refreshDataSilent() {
     try {
-        // Mengambil data monitoring & history terbaru tanpa menampilkan Loader (Silent)
         const [resMonitoring, resHistory] = await Promise.all([
             fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: "getMonitoring", tanggal: "ALL" }) }).then(r => r.json()),
             fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: "getHistoriMatrix" }) }).then(r => r.json())
@@ -570,7 +587,6 @@ async function refreshDataSilent() {
         CACHE_MONITORING = resMonitoring;
         CACHE_HISTORY = resHistory;
         
-        // Jika sedang di halaman monitoring, langsung update tampilan
         if (document.getElementById('page-monitoring').classList.contains('active')) {
             renderMonitoringHarian();
             if(document.getElementById('sub-histori').style.display === 'block') renderMatrix();
@@ -638,7 +654,6 @@ function masukAplikasi(loginUser) {
 
   unlockUI();
 
-  // isi identitas
   document.getElementById("nik").value = loginUser.nik;
   document.getElementById("nama").value = loginUser.nama;
 
@@ -657,31 +672,24 @@ function logout() {
   const yakin = confirm("Yakin ingin keluar dari aplikasi?");
   if (!yakin) return;
 
-  // ❌ Hapus session login
   sessionStorage.removeItem("loginUser");
 
-  // 🔒 Kunci UI total
   lockUI();
 
-  // 🔄 Reset field user
   document.getElementById("nik").value = "";
   document.getElementById("nama").value = "-";
   document.getElementById("loginNik").value = "";
   document.getElementById("loginPass").value = "";
 
-  // 🔁 Kembali ke tab INPUT
   document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
   document.querySelector('.tab-item:nth-child(1)').classList.add('active');
   document.getElementById('page-so').classList.add('active');
 
-  // ❌ Sembunyikan monitoring
   document.getElementById("page-monitoring").classList.remove("active");
 
-  // ❌ Sembunyikan tombol logout
   document.getElementById("btnLogout").style.display = "none";
 
-  // 🔐 Tampilkan halaman login
   document.getElementById("loginPage").style.display = "flex";
 
   alert("🔒 Anda telah logout.");
@@ -694,7 +702,6 @@ function getLoginUser() {
     return JSON.parse(s);
   }
 
-  // FALLBACK (opsional)
   const nikEl = document.getElementById("nik");
   const namaEl = document.getElementById("nama");
 
@@ -730,7 +737,6 @@ function switchTab(tab) {
     return;
   }
 
-  // Matikan auto refresh dulu
   if (AUTO_REFRESH_TIMER) {
     clearInterval(AUTO_REFRESH_TIMER);
     AUTO_REFRESH_TIMER = null;
@@ -738,7 +744,6 @@ function switchTab(tab) {
 
   currentTab = tab;
 
-  // ================= MONITORING =================
   if (tab === "monitoring") {
 
     if (loginUser.role !== "ADMIN") {
@@ -748,16 +753,14 @@ function switchTab(tab) {
 
     bukaMonitoringAsli();
 
-    // Aktifkan auto refresh
     AUTO_REFRESH_TIMER = setInterval(
       cekUpdateMonitoring,
-      2500
+      1500
     );
 
     return;
   }
 
-  // ================= INPUT SO =================
   if (tab === "so") {
 
     document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
@@ -829,7 +832,6 @@ function renderMonitoringHarian() {
     const katFilter = document.getElementById('filterKategori').value;
     if (!CACHE_MONITORING) return;
 
-    // --- LOGIKA AKUMULASI (GROUP BY PLU) ---
     const groupData = {};
 
     CACHE_MONITORING.forEach(r => {
@@ -837,7 +839,6 @@ function renderMonitoringHarian() {
         const plu = r[4];    // PLU
         const kategoriData = r[17]; // Kategori
 
-        // Filter berdasarkan Tgl dan Kategori dulu
         if (tglData === tglFilter && (katFilter === "ALL" || kategoriData === katFilter)) {
             if (!groupData[plu]) {
                 // Jika PLU belum ada di object, buat baru (copy array)
@@ -852,10 +853,8 @@ function renderMonitoringHarian() {
         }
     });
 
-    // Ubah kembali object groupData menjadi Array untuk di-render
     let filtered = Object.values(groupData);
 
-    // --- LOGIKA HITUNG TOTAL SUMMARY (BOX HITAM) ---
     let totalRp = 0;
     let totalItem = 0;
 
@@ -873,7 +872,6 @@ function renderMonitoringHarian() {
     document.getElementById('totalNominalSelisih').innerText = formatter.format(totalRp);
     document.getElementById('totalNominalSelisih').style.color = totalRp < 0 ? "#ff4d4d" : "#45f542";
 
-    // --- SORT BY ABSOLUTE RP SELISIH ---
     filtered.sort((a, b) => Math.abs(Number(b[15])) - Math.abs(Number(a[15])));
 
     let html = "";
@@ -909,11 +907,11 @@ function bukaModalRevisi(r) {
   document.getElementById("rev_descp").value = r[5];
   document.getElementById("rev_oh").value = r[9];
 
-document.getElementById("rev_qty_lama").value = r[10];       // PCS lama
-document.getElementById("rev_storage_lama").value = r[11];  // STORAGE lama
+document.getElementById("rev_qty_lama").value = r[10];     
+document.getElementById("rev_storage_lama").value = r[11]; 
 
-  document.getElementById("rev_qty_baru").value = 0;           // Default input baru
-  document.getElementById("rev_storage_baru").value = 0;       // Default storage baru
+  document.getElementById("rev_qty_baru").value = 0;           
+  document.getElementById("rev_storage_baru").value = 0;       
   document.getElementById("rev_alasan").value = "";
 
   MODAL_REVISI.show();
@@ -949,7 +947,6 @@ async function simpanRevisi() {
 
     MODAL_REVISI.hide();
 
-    // 🔥 REFRESH DATA TANPA LOADER
     await muatMonitoringSilent();
 
   } catch (e) {
@@ -968,7 +965,6 @@ function renderMatrix() {
   const katFilter = document.getElementById('filterKategori').value;
   const res = CACHE_HISTORY;
 
-  /* ===== HEADER ===== */
   let hHtml = `
     <tr>
       <th>PLU</th>
@@ -984,11 +980,9 @@ function renderMatrix() {
   hHtml += `</tr>`;
   document.getElementById('headMatrix').innerHTML = hHtml;
 
-  /* ===== BODY ===== */
   let rowsFiltered = res.rows.filter(r =>
     katFilter === "ALL" || r.kategori === katFilter
   );
-/* ===== SORTING HISTORY (TGL TERAKHIR) ===== */
 const sortMode = document.getElementById("sortHistory")?.value || "none";
 
 if (sortMode === "last") {
@@ -1019,11 +1013,9 @@ if (sortMode === "last") {
 let style = "";
 
 if (!(tgl in r.vals)) {
-  // ❌ TIDAK ADA SO
   cellHtml = "X";
   style = "color:#999;font-weight:bold;";
 } else {
-  // ✅ ADA SO
   const val = Number(r.vals[tgl]);
 
   if (val < 0) style = "color:red;font-weight:bold;";
@@ -1071,7 +1063,6 @@ async function unduh() {
     return;
   }
 
-  // ✅ GUNAKAN LOADER YANG ADA
   document.getElementById("loader").style.display = "flex";
 
   try {
@@ -1149,7 +1140,6 @@ function cariBarang(val, idx, tipe) {
   if (!searchVal) return;
   let f = DATA_I.find(r => String(r[idx]).trim() === searchVal);
   if (f) {
-    // ... (kode pengisian field yang sudah ada) ...
     document.getElementById('barcode').value = f[0];
     document.getElementById('plu').value = f[1];
     document.getElementById('descp').value = f[2];
@@ -1159,8 +1149,7 @@ function cariBarang(val, idx, tipe) {
     document.getElementById('oh').value = f[6];
     document.getElementById('hpp_hidden').value = f[9] || 0;
 
-    // TAMPILKAN STORAGE
-    tampilkanStorage(f[1]); // Panggil berdasarkan PLU
+    tampilkanStorage(f[1]);
 
     setTimeout(() => document.getElementById('qty').focus(), 300);
   } else { 
@@ -1238,8 +1227,8 @@ function simpanKeAntrean() {
         tag: document.getElementById('tag').value,
         oh: document.getElementById('oh').value || 0,
         hpp: document.getElementById('hpp_hidden').value || 0,
-        qtyPCS: qtyPCS,           // simpan PCS terpisah
-        qtyStorage: qtyStorage,   // simpan storage terpisah
+        qtyPCS: qtyPCS,
+        qtyStorage: qtyStorage,
         qtyTotal: qtyPCS + qtyStorage
     };
 
@@ -1329,29 +1318,6 @@ function pilihItemDariLov(item) {
   setTimeout(() => document.getElementById('qty').focus(), 300);
 }
 
-function siapkanKoreksi(rowData) {
-  switchTab('so');
-  
-  const pluClean = String(rowData[4]).replace(/'/g, "").trim();
-
-  document.getElementById('tgl').value = rowData[0];
-  document.getElementById('kategori').value = rowData[13] || "SO PARTIAL";
-  document.getElementById('barcode').value = rowData[3];
-  document.getElementById('plu').value = pluClean;
-  document.getElementById('descp').value = rowData[5];
-  document.getElementById('lokasi').value = rowData[6];
-  document.getElementById('c2').value = rowData[7];
-  document.getElementById('tag').value = rowData[8];
-  document.getElementById('oh').value = rowData[9];
-  
-  document.getElementById('qty').value = "";
-  
-  tampilkanStorage(pluClean); 
-
-  document.getElementById('qty').focus();
-  alert("♻️ MODE REVISI AKTIF untuk PLU: " + pluClean);
-}
-
 function prosesLogin() {
 if (!DATA_READY) {
     alert("⏳ Data aplikasi masih disiapkan, mohon tunggu...");
@@ -1399,13 +1365,10 @@ function clearDataInput() {
   const yakin = confirm("Batalkan input barang ini?");
   if (!yakin) return;
 
-  // Reset hanya input barang (tidak menyentuh antrean & user)
   resetInputHanyaBarang();
 
-  // Kosongkan qty PCS
   document.getElementById('qty').value = "";
 
-  // Fokus kembali ke barcode
   setTimeout(() => {
     document.getElementById('barcode').focus();
   }, 100);
@@ -1421,12 +1384,10 @@ function downloadHistoryExcel() {
   const katFilter = document.getElementById('filterKategori')?.value || "ALL";
   const sortMode = document.getElementById("sortHistory")?.value || "none";
 
-  /* ===== FILTER ===== */
   let rowsFiltered = res.rows.filter(r =>
     katFilter === "ALL" || r.kategori === katFilter
   );
 
-  /* ===== SORT TGL TERAKHIR ===== */
   if (sortMode === "last" && res.headers.length) {
     const lastDate = res.headers[res.headers.length - 1];
 
@@ -1437,14 +1398,11 @@ function downloadHistoryExcel() {
     });
   }
 
-  /* ===== BUILD EXCEL DATA ===== */
   let aoa = [];
 
-  // HEADER
   let header = ["PLU", "DESCP", "LOKASI", "TAG", ...res.headers];
   aoa.push(header);
 
-  // BODY
   rowsFiltered.forEach(r => {
     let row = [
       r.plu,
@@ -1464,7 +1422,6 @@ function downloadHistoryExcel() {
     aoa.push(row);
   });
 
-  /* ===== EXPORT ===== */
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "HISTORY_SO");
